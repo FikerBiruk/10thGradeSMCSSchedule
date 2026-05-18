@@ -468,64 +468,6 @@ function renderAdminBlockCell(period, blockKey, periodIndex, week) {
 	`;
 }
 
-function renderBlockCard(period, blockKey, editable) {
-	const block = period[blockKey];
-	const courseOptions = COURSES.map((course) => `<option value="${course}" ${course === block.course ? 'selected' : ''}>${course}</option>`).join('');
-	const lengthOptions = [1, 2].map((length) => `<option value="${length}" ${Number(block.length) === length ? 'selected' : ''}>${length === 1 ? '1 period' : '2 periods'}</option>`).join('');
-	const defaultTeacher = COURSE_LIBRARY[block.course]?.teacher || 'TBA';
-	const defaultRoom = COURSE_LIBRARY[block.course]?.room || 'TBA';
-	const helper = `${block.room === defaultRoom ? 'Default room' : 'Room override'} ${block.room} · Default teacher ${defaultTeacher}`;
-
-	if (!editable) {
-		return `
-			<article class="block-card ${blockKey}">
-				<div class="block-head">
-					<span class="block-pill ${blockKey}">Block ${blockKey.toUpperCase()}</span>
-					${Number(block.length) === 2 ? '<span class="double-pill">Double</span>' : ''}
-				</div>
-				<div class="block-title">${escapeHtml(block.course)}</div>
-				<div class="block-meta">
-					<span>${escapeHtml(block.teacher)}</span>
-					<span>Room ${escapeHtml(block.room)}</span>
-				</div>
-				${block.note ? `<div class="block-note">${escapeHtml(block.note)}</div>` : ''}
-			</article>
-		`;
-	}
-
-	return `
-		<article class="block-card ${blockKey}">
-			<div class="block-head">
-				<span class="block-pill ${blockKey}">Block ${blockKey.toUpperCase()}</span>
-				<span class="tag">Default: ${escapeHtml(defaultRoom)}</span>
-			</div>
-			<div class="block-form-grid">
-				<label class="field">
-					<span>Course</span>
-					<select data-block-field="course" data-period-index="${period.period - 1}" data-block-key="${blockKey}">${courseOptions}</select>
-				</label>
-				<label class="field">
-					<span>Teacher</span>
-					<input data-block-field="teacher" data-period-index="${period.period - 1}" data-block-key="${blockKey}" type="text" value="${escapeAttribute(block.teacher)}">
-				</label>
-				<label class="field">
-					<span>Room</span>
-					<input data-block-field="room" data-period-index="${period.period - 1}" data-block-key="${blockKey}" type="text" value="${escapeAttribute(block.room)}">
-				</label>
-				<label class="field">
-					<span>Length</span>
-					<select data-block-field="length" data-period-index="${period.period - 1}" data-block-key="${blockKey}">${lengthOptions}</select>
-				</label>
-				<label class="field">
-					<span>Note</span>
-					<input data-block-field="note" data-period-index="${period.period - 1}" data-block-key="${blockKey}" type="text" value="${escapeAttribute(block.note || '')}" placeholder="Optional note">
-				</label>
-				<p class="helper-copy">${escapeHtml(helper)}</p>
-			</div>
-		</article>
-	`;
-}
-
 function setupDragAndDrop() {
 	const adminPeriods = document.getElementById('adminPeriods');
 	if (!adminPeriods) return;
