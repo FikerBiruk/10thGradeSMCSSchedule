@@ -6,98 +6,101 @@
 	<title>SMCS Schedule Admin</title>
 	<link rel="stylesheet" href="../styles.css">
 </head>
-<body class="admin-body">
-	<div class="app-shell">
-		<header class="topbar">
-			<div>
-				<p class="eyebrow">SMCS Schedule</p>
-				<h1>Schedule Editor</h1>
-				<p class="lede">Drag blocks between periods, create new ones, or delete existing blocks.</p>
+<body class="admin-page" data-page="admin">
+	<div class="site-shell">
+		<header class="hero surface">
+			<div class="hero-copy">
+				<p class="eyebrow">SMCS Schedule Admin</p>
+				<h1>Week Editor</h1>
+				<p class="lede">Log in to edit weekly class mappings, room overrides, double periods, and special events. Public viewers do not need a login.</p>
 			</div>
-			<div class="topbar-actions">
-				<button id="addBlockButton" class="primary-btn">Add Block</button>
-				<button id="logoutButton" class="secondary-btn" type="button">Logout</button>
+			<div class="hero-actions">
+				<a class="ghost-btn" href="../">Public View</a>
+				<button id="logoutButton" class="ghost-btn" type="button">Logout</button>
 			</div>
 		</header>
 
-		<section class="mobile-toolbar">
-			<label>
-				<span>Day</span>
-				<select id="mobileDaySelect"></select>
-			</label>
-		</section>
-
-		<section class="desktop-board">
-			<div id="scheduleGrid" class="schedule-grid"></div>
-		</section>
-
-		<section class="mobile-board">
-			<div id="mobileSchedule" class="mobile-schedule"></div>
-		</section>
-	</div>
-
-	<div id="blockModal" class="modal hidden" aria-hidden="true">
-		<div class="modal-card">
-			<div class="modal-header">
-				<h2>Add Block</h2>
-				<button id="closeModalButton" class="icon-btn" type="button" aria-label="Close">×</button>
-			</div>
-			<form id="blockForm" class="stack-form compact">
-				<div class="form-row">
-					<label>
-						<span>Day</span>
-						<select name="day" required>
-							<option value="MON">Mon</option>
-							<option value="TUE">Tue</option>
-							<option value="WED">Wed</option>
-							<option value="THU">Thu</option>
-							<option value="FRI">Fri</option>
-						</select>
-					</label>
-					<label>
-						<span>Start Period</span>
-						<select name="periodStart" required>
-							<option value="1">1</option>
-							<option value="2">2</option>
-							<option value="3">3</option>
-							<option value="4">4</option>
-						</select>
-					</label>
-				</div>
-				<div class="form-row">
-					<label>
-						<span>Length</span>
-						<select name="length" required>
-							<option value="1">1</option>
-							<option value="2">2</option>
-						</select>
-					</label>
-					<label>
-						<span>Course</span>
-						<select name="course" required>
-							<option value="Bio">Bio</option>
-							<option value="CS">CS</option>
-							<option value="ESS">ESS</option>
-							<option value="FOT">FOT</option>
-						</select>
-					</label>
-				</div>
-				<div class="form-row">
-					<label>
-						<span>Group</span>
-						<select name="group" required>
-							<option value="X">X</option>
-							<option value="Y">Y</option>
-						</select>
-					</label>
-					<label>
-						<span>Room</span>
-						<input name="room" type="text" placeholder="101" required>
-					</label>
-				</div>
-				<button type="submit" class="primary-btn">Save Block</button>
+		<section id="loginPanel" class="surface auth-card">
+			<p class="eyebrow">Admin Access</p>
+			<h2>Sign in to edit the schedule</h2>
+			<p class="muted-copy">Use the hardcoded admin account to manage the week-by-week schedule.</p>
+			<form id="adminLoginForm" class="auth-form">
+				<label class="field">
+					<span>Username</span>
+					<input id="adminUsername" type="text" autocomplete="username" required>
+				</label>
+				<label class="field">
+					<span>Password</span>
+					<input id="adminPassword" type="password" autocomplete="current-password" required>
+				</label>
+				<button class="primary-btn" type="submit">Unlock Editor</button>
+				<p id="loginError" class="error-text" hidden></p>
 			</form>
-		</div>
+		</section>
+
+		<section id="adminApp" class="admin-layout" hidden>
+			<div class="surface toolbar-panel">
+				<div class="toolbar-main">
+					<label class="field compact-field">
+						<span>Active Week</span>
+						<select id="adminWeekSelect"></select>
+					</label>
+					<div class="toolbar-actions">
+						<button id="newWeekButton" class="secondary-btn" type="button">New Week</button>
+						<button id="duplicateWeekButton" class="secondary-btn" type="button">Duplicate Week</button>
+						<button id="resetButton" class="secondary-btn" type="button">Reset Sample</button>
+						<button id="exportButton" class="ghost-btn" type="button">Export JSON</button>
+					</div>
+				</div>
+				<p id="saveStatus" class="save-status">Saved to this browser</p>
+			</div>
+
+			<div class="admin-grid">
+				<section class="surface editor-panel">
+					<div class="panel-head">
+						<div>
+							<p class="eyebrow">Week Details</p>
+							<h2 id="adminWeekHeading">Week</h2>
+						</div>
+						<span id="weekBadge" class="week-badge"></span>
+					</div>
+					<div class="week-meta-grid">
+						<label class="field">
+							<span>Week Name</span>
+							<input id="weekNameInput" type="text">
+						</label>
+						<label class="field">
+							<span>Focus</span>
+							<input id="weekFocusInput" type="text">
+						</label>
+						<label class="field full-span">
+							<span>Week Notes</span>
+							<textarea id="weekNotesInput" rows="3"></textarea>
+						</label>
+					</div>
+					<div id="adminPeriods" class="period-editor-list"></div>
+				</section>
+
+				<aside class="sidebar-stack">
+					<section class="surface info-card">
+						<p class="eyebrow">Order Preview</p>
+						<h2>Block X / Y sequence</h2>
+						<div id="adminOrder" class="order-strip"></div>
+					</section>
+
+					<section class="surface info-card">
+						<div class="panel-head compact-head">
+							<div>
+								<p class="eyebrow">Special Events</p>
+								<h2>Week events</h2>
+							</div>
+							<button id="addEventButton" class="secondary-btn" type="button">Add Event</button>
+						</div>
+						<div id="eventsEditor" class="event-editor-list"></div>
+					</section>
+				</aside>
+			</div>
+		</section>
 	</div>
 
 	<script src="../app.js"></script>

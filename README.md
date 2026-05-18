@@ -1,14 +1,15 @@
 # smcs-schedule
 
-Bare-bones SMCS schedule app.
+SMCS schedule site with a GitHub Pages front end.
 
 ## GitHub Pages
 
 Publish the `docs/` folder as the Pages source.
 
-- Root page: login screen
-- Admin page: `/admin/`
-- Data and auth on Pages use `localStorage` so the app works without a Java backend
+- Public homepage: `/`
+- Admin editor: `/admin/`
+- Admin login: `charles` / `SMCS`
+- Weekly schedule data is stored in the browser for the Pages build, so changes are local to that browser unless you export the JSON and publish the updated file
 
 ## Local Spring Boot
 

@@ -3,30 +3,62 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>SMCS Schedule Login</title>
+	<title>SMCS Schedule</title>
 	<link rel="stylesheet" href="styles.css">
 </head>
-<body class="login-body">
-	<main class="auth-shell">
-		<section class="auth-card">
-			<p class="eyebrow">SMCS Schedule</p>
-			<h1>Admin Login</h1>
-			<p class="lede">Use the hardcoded admin account to manage the schedule.</p>
+<body class="public-page" data-page="public">
+	<div class="site-shell">
+		<header class="hero surface">
+			<div class="hero-copy">
+				<p class="eyebrow">SMCS Schedule</p>
+				<h1>Weekly Block Schedule</h1>
+				<p class="lede">Students are assigned to Block X or Block Y. Each week can reorder the four classes, swap rooms, and add special events or double periods.</p>
+			</div>
+			<div class="hero-actions">
+				<label class="field compact-field">
+					<span>Week</span>
+					<select id="publicWeekSelect"></select>
+				</label>
+				<a class="ghost-btn" href="admin/">Admin</a>
+			</div>
+		</header>
 
-			<form id="loginForm" class="stack-form">
-				<label>
-					<span>Username</span>
-					<input id="username" name="username" type="text" autocomplete="username" required>
-				</label>
-				<label>
-					<span>Password</span>
-					<input id="password" name="password" type="password" autocomplete="current-password" required>
-				</label>
-				<button type="submit" class="primary-btn">Sign in</button>
-				<p id="loginError" class="error-text" hidden></p>
-			</form>
+		<section class="public-grid">
+			<main class="surface main-panel">
+				<div class="summary-strip" id="publicSummary"></div>
+				<div id="publicOrder" class="order-strip"></div>
+				<div id="publicSchedule" class="period-board"></div>
+			</main>
+
+			<aside class="sidebar-stack">
+				<section class="surface info-card">
+					<p class="eyebrow">Block Logic</p>
+					<h2>How the schedule works</h2>
+					<p class="muted-copy">Block X and Block Y contain the same four classes, but in different orders. The selected week determines which class appears in each period for each block.</p>
+					<div class="logic-points">
+						<div>
+							<strong>Period 1-4</strong>
+							<span>Four periods every day</span>
+						</div>
+						<div>
+							<strong>Double periods</strong>
+							<span>Length 2 spans two periods</span>
+						</div>
+						<div>
+							<strong>Room overrides</strong>
+							<span>Weekly rooms can change without changing the class</span>
+						</div>
+					</div>
+				</section>
+
+				<section class="surface info-card">
+					<p class="eyebrow">Special Events</p>
+					<h2>This week</h2>
+					<div id="publicEvents" class="event-feed"></div>
+				</section>
+			</aside>
 		</section>
-	</main>
+	</div>
 
 	<script src="app.js"></script>
 </body>
