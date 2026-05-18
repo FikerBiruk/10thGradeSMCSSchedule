@@ -1,3 +1,5 @@
+// Version 2.0 - Table layout with drag-and-drop admin editor
+
 const STORAGE_KEY = "smcs-schedule-data-v3";
 const AUTH_KEY = "smcs-schedule-admin-auth";
 const ADMIN_USERNAME = "charles";
