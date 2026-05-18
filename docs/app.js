@@ -1,4 +1,4 @@
-const STORAGE_KEY = "smcs-schedule-data-v2";
+const STORAGE_KEY = "smcs-schedule-data-v3";
 const AUTH_KEY = "smcs-schedule-admin-auth";
 const ADMIN_USERNAME = "charles";
 const ADMIN_PASSWORD = "SMCS";
