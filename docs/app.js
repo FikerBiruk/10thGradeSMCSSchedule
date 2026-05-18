@@ -564,9 +564,12 @@ function handleDrop(event) {
 		console.error('Drop error:', err);
 	}
 }
+
+function renderEventsEditor(week) {
 	if (!week.events.length) {
 		return '<p class="muted-copy">No special events yet.</p>';
 	}
+
 
 	return week.events.map((item, index) => {
 		const periodOptions = WEEK_OPTIONS.map((option) => {
