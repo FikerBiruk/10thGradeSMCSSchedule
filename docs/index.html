@@ -60,17 +60,6 @@
 		</section>
 	</div>
 
-	<script>
-		// Inline loader: fetch app.js and execute it in global scope to bypass external script issues
-		(function() {
-			const script = document.createElement('script');
-			script.src = 'app.js?t=' + Date.now();
-			script.onload = function() {
-				// Script loaded - globals should now be available
-				console.log('app.js loaded');
-			};
-			document.head.appendChild(script);
-		})();
-	</script>
+	<script src="app.js"></script>
 </body>
 </html>
