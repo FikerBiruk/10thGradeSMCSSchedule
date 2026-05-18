@@ -11,8 +11,8 @@
 		<header class="hero surface">
 			<div class="hero-copy">
 				<p class="eyebrow">SMCS Schedule Admin</p>
-				<h1>Week Editor</h1>
-				<p class="lede">Log in to edit weekly class mappings, room overrides, double periods, and special events. Public viewers do not need a login.</p>
+				<h1>Schedule Editor</h1>
+				<p class="lede">Drag classes from the right panel and drop them into the schedule to assign periods. Click room numbers to edit them. Double periods auto-merge.</p>
 			</div>
 			<div class="hero-actions">
 				<a class="ghost-btn" href="../">Public View</a>
@@ -23,7 +23,7 @@
 		<section id="loginPanel" class="surface auth-card">
 			<p class="eyebrow">Admin Access</p>
 			<h2>Sign in to edit the schedule</h2>
-			<p class="muted-copy">Use the hardcoded admin account to manage the week-by-week schedule.</p>
+			<p class="muted-copy">Use the hardcoded admin account to manage the schedule.</p>
 			<form id="adminLoginForm" class="auth-form">
 				<label class="field">
 					<span>Username</span>
@@ -40,64 +40,45 @@
 
 		<section id="adminApp" class="admin-layout" hidden>
 			<div class="surface toolbar-panel">
-				<div class="toolbar-main">
-					<label class="field compact-field">
-						<span>Active Week</span>
-						<select id="adminWeekSelect"></select>
-					</label>
-					<div class="toolbar-actions">
-						<button id="newWeekButton" class="secondary-btn" type="button">New Week</button>
-						<button id="duplicateWeekButton" class="secondary-btn" type="button">Duplicate Week</button>
-						<button id="resetButton" class="secondary-btn" type="button">Reset Sample</button>
-						<button id="exportButton" class="ghost-btn" type="button">Export JSON</button>
-					</div>
+				<div class="toolbar-actions">
+					<button id="resetButton" class="secondary-btn" type="button">Reset to Default</button>
+					<button id="exportButton" class="ghost-btn" type="button">Export JSON</button>
 				</div>
 				<p id="saveStatus" class="save-status">Saved to this browser</p>
 			</div>
 
-			<div class="admin-grid">
+			<div class="admin-grid-2">
 				<section class="surface editor-panel">
-					<div class="panel-head">
-						<div>
-							<p class="eyebrow">Week Details</p>
-							<h2 id="adminWeekHeading">Week</h2>
-						</div>
-						<span id="weekBadge" class="week-badge"></span>
-					</div>
-					<div class="week-meta-grid">
-						<label class="field">
-							<span>Week Name</span>
-							<input id="weekNameInput" type="text">
-						</label>
-						<label class="field">
-							<span>Focus</span>
-							<input id="weekFocusInput" type="text">
-						</label>
-						<label class="field full-span">
-							<span>Week Notes</span>
-							<textarea id="weekNotesInput" rows="3"></textarea>
-						</label>
-					</div>
-					<div id="adminPeriods" class="period-editor-list"></div>
+					<p class="eyebrow">Schedule Editor</p>
+					<h2>Drag & Drop Classes</h2>
+					<div id="adminSchedule" class="period-editor-list"></div>
 				</section>
 
 				<aside class="sidebar-stack">
 					<section class="surface info-card">
-						<p class="eyebrow">Order Preview</p>
-						<h2>Block X / Y sequence</h2>
-						<div id="adminOrder" class="order-strip"></div>
+						<p class="eyebrow">Available Classes</p>
+						<h2>Drag to assign</h2>
+						<div id="adminClassCards" class="class-cards-panel"></div>
 					</section>
 
 					<section class="surface info-card">
 						<div class="panel-head compact-head">
 							<div>
 								<p class="eyebrow">Special Events</p>
-								<h2>Week events</h2>
+								<h2>Manage events</h2>
 							</div>
 							<button id="addEventButton" class="secondary-btn" type="button">Add Event</button>
 						</div>
 						<div id="eventsEditor" class="event-editor-list"></div>
 					</section>
+				</aside>
+			</div>
+		</section>
+	</div>
+
+	<script src="../app.js"></script>
+</body>
+</html>
 				</aside>
 			</div>
 		</section>

@@ -1,12 +1,12 @@
-// Version 2.0 - Table layout with drag-and-drop admin editor
+// Version 3.0 - Simple 4-period schedule without weeks
 
-const STORAGE_KEY = "smcs-schedule-data-v3";
+const STORAGE_KEY = "smcs-schedule-data-v4";
 const AUTH_KEY = "smcs-schedule-admin-auth";
 const ADMIN_USERNAME = "charles";
 const ADMIN_PASSWORD = "SMCS";
 const COURSES = ["Bio", "CS", "ESS", "FOT"];
 const PERIODS = [1, 2, 3, 4];
-const WEEK_OPTIONS = ["all", ...PERIODS];
+const PERIOD_OPTIONS = [1, 2, 3, 4];
 
 const COURSE_LIBRARY = {
 	Bio: { teacher: "Mr. Yu", room: "2614" },
@@ -16,48 +16,21 @@ const COURSE_LIBRARY = {
 };
 
 const DEFAULT_SCHEDULE = {
-	activeWeekId: "week-1",
-	weeks: [
-		createWeek("week-1", "Week 1", "Launch Week", "Welcome assembly Tuesday. Double Bio lab on Thursday.", [
-			{ period: "all", title: "Welcome Assembly", note: "Gym after Period 2", description: "" },
-			{ period: 3, title: "Advisory Check-In", note: "Shortened transition between blocks", description: "" },
-		], [
-			createPeriod(1, createBlock("Bio", { room: "2614", note: "Lab prep" }), createBlock("CS", { room: "1702", note: "Design intro" })),
-			createPeriod(2, createBlock("CS", { room: "1702", note: "Coding workshop" }), createBlock("Bio", { room: "2614", note: "Theory review" })),
-			createPeriod(3, createBlock("ESS", { room: "1708", length: 2, note: "Field study" }), createBlock("FOT", { room: "1620", length: 2, note: "Workshop block" })),
-			createPeriod(4, createBlock("FOT", { room: "1620", note: "Build sprint" }), createBlock("ESS", { room: "1708", note: "Map work" })),
-		]),
-		createWeek("week-2", "Week 2", "Rotation Week", "Some rooms swap for lab access and community projects.", [
-			{ period: 2, title: "Club Fair", note: "Commons at lunch", description: "" },
-		], [
-			createPeriod(1, createBlock("CS", { room: "1702", note: "Programming lab" }), createBlock("Bio", { room: "2614", note: "Lesson review" })),
-			createPeriod(2, createBlock("ESS", { room: "1708", note: "Slides and notes" }), createBlock("FOT", { room: "1620", length: 2, note: "Double project block" })),
-			createPeriod(3, createBlock("FOT", { room: "1620", note: "Prototype build" }), createBlock("ESS", { room: "1708", note: "Research work" })),
-			createPeriod(4, createBlock("Bio", { room: "2614", note: "Lab rotation" }), createBlock("CS", { room: "1702", note: "Debugging session" })),
-		]),
-		createWeek("week-3", "Week 3", "Mid-cycle", "Block X and Y switch emphasis with a couple of longer periods.", [
-			{ period: "all", title: "Pep Rally", note: "End of week, modified schedule", description: "" },
-		], [
-			createPeriod(1, createBlock("ESS", { room: "1708", note: "Maps and climate" }), createBlock("FOT", { room: "1620", note: "Design review" })),
-			createPeriod(2, createBlock("FOT", { room: "1620", length: 2, note: "Double fabrication block" }), createBlock("ESS", { room: "1708", note: "Lab notes" })),
-			createPeriod(3, createBlock("Bio", { room: "2614", note: "Case study" }), createBlock("CS", { room: "1702", note: "Algorithm practice" })),
-			createPeriod(4, createBlock("CS", { room: "1702", note: "Portfolio review" }), createBlock("Bio", { room: "2614", note: "Lab cleanup" })),
-		]),
-		createWeek("week-4", "Week 4", "Wrap-up", "Final presentations and room changes for testing.", [
-			{ period: 4, title: "Community Showcase", note: "Families invited after school", description: "" },
-		], [
-			createPeriod(1, createBlock("FOT", { room: "1620", note: "Build showcase" }), createBlock("ESS", { room: "1708", note: "Review session" })),
-			createPeriod(2, createBlock("Bio", { room: "2614", note: "Final lab" }), createBlock("CS", { room: "1702", note: "Live coding" })),
-			createPeriod(3, createBlock("CS", { room: "1702", length: 2, note: "Double capstone block" }), createBlock("Bio", { room: "2614", note: "Study hall" })),
-			createPeriod(4, createBlock("ESS", { room: "1708", note: "Presentations" }), createBlock("FOT", { room: "1620", note: "Cleanup and storage" })),
-		]),
+	periods: [
+		createPeriod(1, createBlock("Bio", { room: "2614", note: "Lab prep" }), createBlock("CS", { room: "1702", note: "Design intro" })),
+		createPeriod(2, createBlock("CS", { room: "1702", note: "Coding workshop" }), createBlock("Bio", { room: "2614", note: "Theory review" })),
+		createPeriod(3, createBlock("ESS", { room: "1708", length: 2, note: "Field study" }), createBlock("FOT", { room: "1620", length: 2, note: "Workshop block" })),
+		createPeriod(4, createBlock("FOT", { room: "1620", note: "Build sprint" }), createBlock("ESS", { room: "1708", note: "Map work" })),
+	],
+	events: [
+		{ period: "all", title: "Welcome Assembly", note: "Gym after Period 2", description: "" },
+		{ period: 3, title: "Advisory Check-In", note: "Shortened transition between blocks", description: "" },
 	],
 };
 
 const state = {
 	schedule: null,
-	publicWeekId: null,
-	adminWeekId: null,
+	darkMode: true,
 };
 
 function createBlock(course, overrides = {}) {
@@ -89,6 +62,7 @@ function createWeek(id, name, focus, notes, events, periods) {
 document.addEventListener("DOMContentLoaded", () => {
 	const page = document.body.dataset.page;
 	state.schedule = loadSchedule();
+	loadDarkModePreference();
 
 	if (page === "public") {
 		initPublicPage();
@@ -113,13 +87,8 @@ window.addEventListener("storage", (event) => {
 });
 
 function initPublicPage() {
-	state.publicWeekId = state.schedule.activeWeekId;
 	renderPublicPage();
-	const weekSelect = document.getElementById("publicWeekSelect");
-	weekSelect.addEventListener("change", () => {
-		state.publicWeekId = weekSelect.value;
-		renderPublicPage();
-	});
+	setupSettingsMenu();
 }
 
 function initAdminPage() {
@@ -135,9 +104,9 @@ function initAdminPage() {
 	if (isAuthenticated()) {
 		loginPanel.hidden = true;
 		adminApp.hidden = false;
-		state.adminWeekId = state.schedule.activeWeekId;
 		renderAdminPage();
 		setupDragAndDrop();
+		setupSettingsMenu();
 	} else {
 		adminApp.hidden = true;
 		loginPanel.hidden = false;
@@ -179,25 +148,14 @@ function handleLogout() {
 function handleAdminInput(event) {
 	const target = event.target;
 	const schedule = state.schedule;
-	const week = getActiveAdminWeek();
-	if (!week) {
-		return;
-	}
-
-	if (target.matches("[data-week-field]")) {
-		week[target.dataset.weekField] = target.value;
-		saveSchedule(schedule);
-		updateSaveStatus();
-		return;
-	}
 
 	if (target.matches("[data-event-field]")) {
 		const eventIndex = Number(target.dataset.eventIndex);
 		const eventField = target.dataset.eventField;
-		if (!week.events[eventIndex]) {
+		if (!schedule.events[eventIndex]) {
 			return;
 		}
-		week.events[eventIndex][eventField] = target.value;
+		schedule.events[eventIndex][eventField] = target.value;
 		saveSchedule(schedule);
 		updateSaveStatus();
 		return;
@@ -207,7 +165,7 @@ function handleAdminInput(event) {
 		const periodIndex = Number(target.dataset.periodIndex);
 		const blockKey = target.dataset.blockKey;
 		const field = target.dataset.blockField;
-		const period = week.periods[periodIndex];
+		const period = schedule.periods[periodIndex];
 		if (!period) {
 			return;
 		}
@@ -225,35 +183,36 @@ function handleAdminInput(event) {
 		saveSchedule(schedule);
 		updateSaveStatus();
 	}
+
+	// Handle room number inline editing
+	if (target.matches("[data-room-edit]")) {
+		const periodIndex = Number(target.dataset.periodIndex);
+		const blockKey = target.dataset.blockKey;
+		const period = schedule.periods[periodIndex];
+		if (!period) return;
+		
+		const block = period[blockKey];
+		block.room = target.value;
+		saveSchedule(schedule);
+		updateSaveStatus();
+	}
 }
 
 function handleAdminChange(event) {
 	const target = event.target;
 	const schedule = state.schedule;
-	const week = getActiveAdminWeek();
-	if (!week) {
-		return;
-	}
-
-	if (target.matches("#adminWeekSelect")) {
-		state.adminWeekId = target.value;
-		schedule.activeWeekId = target.value;
-		saveSchedule(schedule);
-		renderAdminPage();
-		return;
-	}
 
 	if (target.matches("[data-block-field='length']")) {
 		const periodIndex = Number(target.dataset.periodIndex);
 		const blockKey = target.dataset.blockKey;
-		week.periods[periodIndex][blockKey].length = Number(target.value);
+		schedule.periods[periodIndex][blockKey].length = Number(target.value);
 		saveSchedule(schedule);
 		updateSaveStatus();
 	}
 
 	if (target.matches("[data-event-field='period']")) {
 		const eventIndex = Number(target.dataset.eventIndex);
-		week.events[eventIndex].period = target.value === "all" ? "all" : Number(target.value);
+		schedule.events[eventIndex].period = target.value === "all" ? "all" : Number(target.value);
 		saveSchedule(schedule);
 		updateSaveStatus();
 	}
@@ -261,14 +220,7 @@ function handleAdminChange(event) {
 
 function handleAdminClick(event) {
 	const target = event.target;
-	if (target.matches("#newWeekButton")) {
-		createNewWeek();
-		return;
-	}
-	if (target.matches("#duplicateWeekButton")) {
-		duplicateWeek();
-		return;
-	}
+	
 	if (target.matches("#resetButton")) {
 		resetSampleSchedule();
 		return;
@@ -293,47 +245,32 @@ function handleAdminClick(event) {
 			target.textContent = descField.parentElement.classList.contains('hidden') ? 'Add description' : 'Hide description';
 		}
 	}
+	if (target.matches("[data-action='edit-room']")) {
+		toggleRoomEdit(target, event);
+		return;
+	}
+	if (target.matches("[data-action='make-double']")) {
+		makeDoublePeriod(target);
+		return;
+	}
 }
 
 function renderPublicPage() {
-	const weeks = state.schedule.weeks;
-	const selectedWeekId = state.publicWeekId || state.schedule.activeWeekId;
-	const week = getWeekById(selectedWeekId) || weeks[0];
-	state.publicWeekId = week.id;
-	populateWeekSelect("publicWeekSelect", weeks, week.id);
-
-	document.getElementById("publicSummary").innerHTML = buildSummaryChips(week, false);
-	document.getElementById("publicOrder").innerHTML = buildOrderChips(week);
-	document.getElementById("publicSchedule").innerHTML = renderPeriodBoard(week, false);
-	document.getElementById("publicEvents").innerHTML = renderEventFeed(week);
+	const schedule = state.schedule;
+	document.getElementById("publicSchedule").innerHTML = renderPublicScheduleTable(schedule);
+	document.getElementById("publicEvents").innerHTML = renderEventFeed(schedule);
 }
 
 function renderAdminPage() {
-	const weeks = state.schedule.weeks;
-	const week = getActiveAdminWeek() || weeks[0];
-	state.adminWeekId = week.id;
-	populateWeekSelect("adminWeekSelect", weeks, week.id);
-	document.getElementById("adminWeekHeading").textContent = week.name;
-	document.getElementById("weekBadge").innerHTML = `<strong>${week.focus}</strong><small>${week.id}</small>`;
-	document.getElementById("weekNameInput").value = week.name;
-	document.getElementById("weekFocusInput").value = week.focus;
-	document.getElementById("weekNotesInput").value = week.notes;
-	document.getElementById("adminOrder").innerHTML = buildOrderChips(week);
-	document.getElementById("adminPeriods").innerHTML = renderPeriodBoard(week, true);
-	document.getElementById("eventsEditor").innerHTML = renderEventsEditor(week);
+	const schedule = state.schedule;
+	document.getElementById("adminSchedule").innerHTML = renderAdminScheduleTable(schedule);
+	document.getElementById("adminClassCards").innerHTML = renderClassCards();
+	document.getElementById("eventsEditor").innerHTML = renderEventsEditor(schedule);
 	updateSaveStatus();
 	setupDragAndDrop();
 }
 
-function renderPeriodBoard(week, editable) {
-	if (editable) {
-		return renderAdminScheduleTable(week);
-	} else {
-		return renderPublicScheduleTable(week);
-	}
-}
-
-function renderPublicScheduleTable(week) {
+function renderPublicScheduleTable(schedule) {
 	const tableHtml = `
 		<table class="schedule-table public-table">
 			<thead>
@@ -344,14 +281,12 @@ function renderPublicScheduleTable(week) {
 				</tr>
 			</thead>
 			<tbody>
-				${week.periods.map((period) => {
+				${schedule.periods.map((period, idx) => {
 					const xDouble = Number(period.x.length) === 2;
 					const yDouble = Number(period.y.length) === 2;
-					const nextPeriod = week.periods[period.period];
 					
 					// Skip if this period is part of a double (but not the first)
-					if ((period.period > 1 && Number(week.periods[period.period - 2].x.length) === 2) ||
-					    (period.period > 1 && Number(week.periods[period.period - 2].y.length) === 2)) {
+					if (idx > 0 && (Number(schedule.periods[idx - 1].x.length) === 2 || Number(schedule.periods[idx - 1].y.length) === 2)) {
 						return '';
 					}
 					
@@ -384,7 +319,7 @@ function renderPublicScheduleTable(week) {
 	return tableHtml;
 }
 
-function renderAdminScheduleTable(week) {
+function renderAdminScheduleTable(schedule) {
 	const tableHtml = `
 		<table class="schedule-table admin-table">
 			<thead>
@@ -395,12 +330,12 @@ function renderAdminScheduleTable(week) {
 				</tr>
 			</thead>
 			<tbody>
-				${week.periods.map((period, idx) => {
+				${schedule.periods.map((period, idx) => {
 					const xDouble = Number(period.x.length) === 2;
 					const yDouble = Number(period.y.length) === 2;
 					
 					// Skip if this period is part of a double (but not the first)
-					if (idx > 0 && (Number(week.periods[idx - 1].x.length) === 2 || Number(week.periods[idx - 1].y.length) === 2)) {
+					if (idx > 0 && (Number(schedule.periods[idx - 1].x.length) === 2 || Number(schedule.periods[idx - 1].y.length) === 2)) {
 						return '';
 					}
 					
@@ -410,11 +345,11 @@ function renderAdminScheduleTable(week) {
 								<span class="period-label">Period ${period.period}</span>
 								${xDouble || yDouble ? '<span class="double-indicator">(double)</span>' : ''}
 							</td>
-							<td class="block-col block-x" ${xDouble ? 'rowspan="2"' : ''} data-period="${period.period}" data-block="x">
-								${renderAdminBlockCell(period, 'x', idx, week)}
+							<td class="block-col block-x" ${xDouble ? 'rowspan="2"' : ''} data-period="${period.period}" data-block="x" data-period-index="${idx}">
+								${renderAdminBlockCell(period, 'x', idx, schedule)}
 							</td>
-							<td class="block-col block-y" ${yDouble ? 'rowspan="2"' : ''} data-period="${period.period}" data-block="y">
-								${renderAdminBlockCell(period, 'y', idx, week)}
+							<td class="block-col block-y" ${yDouble ? 'rowspan="2"' : ''} data-period="${period.period}" data-block="y" data-period-index="${idx}">
+								${renderAdminBlockCell(period, 'y', idx, schedule)}
 							</td>
 						</tr>
 					`;
@@ -425,93 +360,78 @@ function renderAdminScheduleTable(week) {
 	return tableHtml;
 }
 
-function renderAdminBlockCell(period, blockKey, periodIndex, week) {
+function renderAdminBlockCell(period, blockKey, periodIndex, schedule) {
 	const block = period[blockKey];
 	const courseOptions = COURSES.map((course) => `<option value="${course}" ${course === block.course ? 'selected' : ''}>${course}</option>`).join('');
-	const lengthOptions = [1, 2].map((length) => `<option value="${length}" ${Number(block.length) === length ? 'selected' : ''}>${length === 1 ? '1 period' : '2 periods'}</option>`).join('');
-	const defaultTeacher = COURSE_LIBRARY[block.course]?.teacher || 'TBA';
-	const defaultRoom = COURSE_LIBRARY[block.course]?.room || 'TBA';
 	
 	return `
-		<div class="admin-block-cell" draggable="true">
+		<div class="admin-block-cell" draggable="false" data-period-index="${periodIndex}" data-block-key="${blockKey}">
 			<div class="cell-display">
 				<div class="course-name">${escapeHtml(block.course)}</div>
 				<div class="teacher-name">${escapeHtml(block.teacher)}</div>
-				<div class="room-number">Room ${escapeHtml(block.room)}</div>
-				${Number(block.length) === 2 ? '<span class="double-badge">Double</span>' : ''}
-			</div>
-			<div class="cell-editor hidden">
-				<label class="mini-field">
-					<span>Course</span>
-					<select data-block-field="course" data-period-index="${periodIndex}" data-block-key="${blockKey}">${courseOptions}</select>
-				</label>
-				<label class="mini-field">
-					<span>Teacher</span>
-					<input data-block-field="teacher" data-period-index="${periodIndex}" data-block-key="${blockKey}" type="text" value="${escapeAttribute(block.teacher)}">
-				</label>
-				<label class="mini-field">
-					<span>Room</span>
-					<input data-block-field="room" data-period-index="${periodIndex}" data-block-key="${blockKey}" type="text" value="${escapeAttribute(block.room)}">
-				</label>
-				<label class="mini-field">
-					<span>Length</span>
-					<select data-block-field="length" data-period-index="${periodIndex}" data-block-key="${blockKey}">
-						${[1, 2].map((length) => `<option value="${length}" ${Number(block.length) === length ? 'selected' : ''}>${length === 1 ? '1 period' : '2 periods'}</option>`).join('')}
-					</select>
-				</label>
-				<label class="mini-field">
-					<span>Note</span>
-					<input data-block-field="note" data-period-index="${periodIndex}" data-block-key="${blockKey}" type="text" value="${escapeAttribute(block.note || '')}" placeholder="Optional">
-				</label>
+				<div class="room-number" title="Click to edit">
+					<span class="room-value">Room ${escapeHtml(block.room)}</span>
+					<input type="text" class="room-input hidden" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${periodIndex}" data-block-key="${blockKey}">
+				</div>
+				${Number(block.length) === 2 ? '<span class="double-badge">(double)</span>' : ''}
 			</div>
 		</div>
 	`;
 }
 
-function setupDragAndDrop() {
-	const adminPeriods = document.getElementById('adminPeriods');
-	if (!adminPeriods) return;
+function renderClassCards() {
+	return COURSES.map(course => `
+		<div class="class-card draggable-card" draggable="true" data-course="${course}">
+			<div class="card-title">${course}</div>
+			<div class="card-teacher">${COURSE_LIBRARY[course].teacher}</div>
+			<div class="card-room">Room ${COURSE_LIBRARY[course].room}</div>
+		</div>
+	`).join('');
+}
 
-	const cells = adminPeriods.querySelectorAll('.admin-block-cell');
-	cells.forEach((cell) => {
-		cell.addEventListener('dragstart', handleDragStart);
-		cell.addEventListener('dragend', handleDragEnd);
+function setupDragAndDrop() {
+	const adminSchedule = document.getElementById('adminSchedule');
+	const adminClassCards = document.getElementById('adminClassCards');
+	
+	if (!adminSchedule || !adminClassCards) return;
+
+	// Setup dragging from class cards
+	const classCards = adminClassCards.querySelectorAll('.draggable-card');
+	classCards.forEach((card) => {
+		card.addEventListener('dragstart', handleClassCardDragStart);
+		card.addEventListener('dragend', handleClassCardDragEnd);
 	});
 
-	const tableCells = adminPeriods.querySelectorAll('.block-col');
+	// Setup drop zones on table cells
+	const tableCells = adminSchedule.querySelectorAll('.block-col');
 	tableCells.forEach((cell) => {
 		cell.addEventListener('dragover', handleDragOver);
-		cell.addEventListener('drop', handleDrop);
+		cell.addEventListener('drop', handleDropFromClassCard);
 		cell.addEventListener('dragleave', handleDragLeave);
+	});
+	
+	// Setup room number click handlers
+	const roomNumbers = adminSchedule.querySelectorAll('.room-number');
+	roomNumbers.forEach((room) => {
+		room.addEventListener('click', toggleRoomEditMode);
 	});
 }
 
-function handleDragStart(event) {
-	const cell = event.currentTarget;
-	const blockCol = cell.closest('.block-col');
-	const periodRow = blockCol.closest('.period-row');
+function handleClassCardDragStart(event) {
+	const card = event.currentTarget;
+	const course = card.dataset.course;
 	
-	const periodLabel = periodRow.querySelector('.period-label');
-	const periodMatch = periodLabel.textContent.match(/\d+/);
-	const period = periodMatch ? Number(periodMatch[0]) : null;
-	const blockKey = blockCol.dataset.block;
-	
-	if (!period || !blockKey) return;
-	
-	event.dataTransfer.effectAllowed = 'move';
+	event.dataTransfer.effectAllowed = 'copy';
 	event.dataTransfer.setData('application/json', JSON.stringify({
-		period,
-		blockKey,
-		sourceElement: cell,
+		type: 'classCard',
+		course,
 	}));
 	
-	cell.classList.add('dragging');
+	card.classList.add('dragging');
 }
 
-function handleDragEnd(event) {
-	const cell = event.currentTarget;
-	cell.classList.remove('dragging');
-	
+function handleClassCardDragEnd(event) {
+	event.currentTarget.classList.remove('dragging');
 	document.querySelectorAll('.block-col').forEach((col) => {
 		col.classList.remove('drag-over');
 	});
@@ -519,7 +439,7 @@ function handleDragEnd(event) {
 
 function handleDragOver(event) {
 	event.preventDefault();
-	event.dataTransfer.dropEffect = 'move';
+	event.dataTransfer.dropEffect = 'copy';
 	event.currentTarget.classList.add('drag-over');
 }
 
@@ -529,50 +449,96 @@ function handleDragLeave(event) {
 	}
 }
 
-function handleDrop(event) {
+function handleDropFromClassCard(event) {
 	event.preventDefault();
 	event.currentTarget.classList.remove('drag-over');
 	
 	try {
 		const data = JSON.parse(event.dataTransfer.getData('application/json'));
+		if (data.type !== 'classCard') return;
+		
+		const course = data.course;
 		const targetCell = event.currentTarget;
-		const targetPeriodRow = targetCell.closest('.period-row');
+		const periodIndex = Number(targetCell.dataset.periodIndex);
+		const blockKey = targetCell.dataset.block;
 		
-		const targetPeriodLabel = targetPeriodRow.querySelector('.period-label');
-		const targetPeriodMatch = targetPeriodLabel.textContent.match(/\d+/);
-		const targetPeriod = targetPeriodMatch ? Number(targetPeriodMatch[0]) : null;
-		const targetBlockKey = targetCell.dataset.block;
+		if (isNaN(periodIndex) || !blockKey) return;
 		
-		if (!targetPeriod || !targetBlockKey) return;
+		const schedule = state.schedule;
+		const period = schedule.periods[periodIndex];
 		
-		const week = getActiveAdminWeek();
-		if (!week) return;
+		if (!period) return;
 		
-		const sourcePeriod = week.periods[data.period - 1];
-		const targetPeriodData = week.periods[targetPeriod - 1];
+		// Assign the course to the cell
+		const block = period[blockKey];
+		block.course = course;
+		applyCourseDefaults(block, course);
 		
-		if (!sourcePeriod || !targetPeriodData) return;
-		
-		// Swap the blocks
-		const temp = sourcePeriod[data.blockKey];
-		sourcePeriod[data.blockKey] = targetPeriodData[targetBlockKey];
-		targetPeriodData[targetBlockKey] = temp;
-		
-		saveSchedule(state.schedule);
+		saveSchedule(schedule);
 		renderAdminPage();
 	} catch (err) {
 		console.error('Drop error:', err);
 	}
 }
 
-function renderEventsEditor(week) {
-	if (!week.events.length) {
+function toggleRoomEditMode(event) {
+	const roomNumberDiv = event.currentTarget;
+	const roomValue = roomNumberDiv.querySelector('.room-value');
+	const roomInput = roomNumberDiv.querySelector('.room-input');
+	
+	if (roomValue.classList.contains('hidden')) {
+		// Currently in edit mode, save and exit
+		const periodIndex = Number(roomInput.dataset.periodIndex);
+		const blockKey = roomInput.dataset.blockKey;
+		const newRoom = roomInput.value.trim();
+		
+		if (newRoom && !isNaN(periodIndex) && blockKey) {
+			const period = state.schedule.periods[periodIndex];
+			if (period) {
+				period[blockKey].room = newRoom;
+				saveSchedule(state.schedule);
+				updateSaveStatus();
+			}
+		}
+		
+		roomValue.classList.remove('hidden');
+		roomInput.classList.add('hidden');
+	} else {
+		// Switch to edit mode
+		const periodIndex = Number(roomInput.dataset.periodIndex);
+		const blockKey = roomInput.dataset.blockKey;
+		const period = state.schedule.periods[periodIndex];
+		
+		if (period) {
+			roomInput.value = period[blockKey].room;
+			roomValue.classList.add('hidden');
+			roomInput.classList.remove('hidden');
+			roomInput.focus();
+			roomInput.select();
+		}
+	}
+}
+
+function makeDoublePeriod(button) {
+	const periodIndex = Number(button.dataset.periodIndex);
+	const blockKey = button.dataset.blockKey;
+	
+	if (isNaN(periodIndex) || !blockKey || periodIndex >= state.schedule.periods.length - 1) return;
+	
+	const schedule = state.schedule;
+	schedule.periods[periodIndex][blockKey].length = 2;
+	
+	saveSchedule(schedule);
+	renderAdminPage();
+}
+
+function renderEventsEditor(schedule) {
+	if (!schedule.events.length) {
 		return '<p class="muted-copy">No special events yet.</p>';
 	}
 
-
-	return week.events.map((item, index) => {
-		const periodOptions = WEEK_OPTIONS.map((option) => {
+	return schedule.events.map((item, index) => {
+		const periodOptions = ['all', ...PERIOD_OPTIONS].map((option) => {
 			const value = option === 'all' ? 'all' : String(option);
 			const label = option === 'all' ? 'All day' : `Period ${option}`;
 			const selected = item.period === 'all' ? value === 'all' : Number(item.period) === option;
@@ -608,33 +574,12 @@ function renderEventsEditor(week) {
 	}).join('');
 }
 
-function buildSummaryChips(week, editable) {
-	const doubleCount = week.periods.filter(periodHasDouble).length;
-	const eventCount = week.events.length;
-	return [
-		`<span class="stat-chip"><small>Week</small><strong>${escapeHtml(week.name)}</strong></span>`,
-		`<span class="stat-chip"><small>Focus</small><strong>${escapeHtml(week.focus)}</strong></span>`,
-		`<span class="stat-chip"><small>Double periods</small><strong>${doubleCount}</strong></span>`,
-		`<span class="stat-chip"><small>Events</small><strong>${eventCount}</strong></span>`,
-		editable ? '<span class="stat-chip"><small>Mode</small><strong>Editor</strong></span>' : '<span class="stat-chip"><small>Mode</small><strong>Public</strong></span>',
-	].join('');
-}
-
-function buildOrderChips(week) {
-	const blockX = week.periods.map((period) => period.x.course).join(' · ');
-	const blockY = week.periods.map((period) => period.y.course).join(' · ');
-	return `
-		<span class="order-chip"><small>Block X</small><strong>${escapeHtml(blockX)}</strong></span>
-		<span class="order-chip"><small>Block Y</small><strong>${escapeHtml(blockY)}</strong></span>
-	`;
-}
-
-function renderEventFeed(week) {
-	if (!week.events.length) {
-		return '<p class="muted-copy">No special events for this week.</p>';
+function renderEventFeed(schedule) {
+	if (!schedule.events.length) {
+		return '<p class="muted-copy">No special events.</p>';
 	}
 
-	return week.events.map((item) => {
+	return schedule.events.map((item) => {
 		const when = item.period === 'all' ? 'All day' : `Period ${item.period}`;
 		return `
 			<article class="event-card">
@@ -650,19 +595,6 @@ function renderEventFeed(week) {
 	}).join('');
 }
 
-function populateWeekSelect(selectId, weeks, activeWeekId) {
-	const select = document.getElementById(selectId);
-	select.innerHTML = weeks.map((week) => `<option value="${week.id}" ${week.id === activeWeekId ? 'selected' : ''}>${escapeAttribute(week.name)}</option>`).join('');
-}
-
-function getWeekById(id) {
-	return state.schedule.weeks.find((week) => week.id === id);
-}
-
-function getActiveAdminWeek() {
-	return getWeekById(state.adminWeekId || state.schedule.activeWeekId);
-}
-
 function loadSchedule() {
 	try {
 		const raw = localStorage.getItem(STORAGE_KEY);
@@ -676,7 +608,8 @@ function loadSchedule() {
 		const normalized = ensureScheduleShape(parsed);
 		saveSchedule(normalized);
 		return normalized;
-	} catch {
+	} catch (err) {
+		console.error('Error loading schedule:', err);
 		const fresh = clone(DEFAULT_SCHEDULE);
 		saveSchedule(fresh);
 		return fresh;
@@ -684,46 +617,40 @@ function loadSchedule() {
 }
 
 function ensureScheduleShape(schedule) {
-	if (!schedule || !Array.isArray(schedule.weeks) || !schedule.weeks.length) {
+	if (!schedule || !Array.isArray(schedule.periods) || schedule.periods.length !== 4) {
 		return clone(DEFAULT_SCHEDULE);
 	}
 
-	const normalized = clone(schedule);
-	normalized.activeWeekId = normalized.weeks.some((week) => week.id === normalized.activeWeekId) ? normalized.activeWeekId : normalized.weeks[0].id;
-	normalized.weeks = normalized.weeks.map((week, weekIndex) => normalizeWeek(week, weekIndex));
-	return normalized;
-}
-
-function normalizeWeek(week, weekIndex) {
-	const fallback = DEFAULT_SCHEDULE.weeks[weekIndex % DEFAULT_SCHEDULE.weeks.length];
-	return {
-		id: week.id || fallback.id,
-		name: week.name || fallback.name,
-		focus: week.focus || fallback.focus,
-		notes: week.notes || fallback.notes,
-		events: Array.isArray(week.events) ? week.events.map((item) => ({
+	const normalized = {
+		periods: schedule.periods.map((period, idx) => ({
+			period: PERIODS[idx] || (idx + 1),
+			x: normalizeBlock(period.x, DEFAULT_SCHEDULE.periods[idx].x),
+			y: normalizeBlock(period.y, DEFAULT_SCHEDULE.periods[idx].y),
+		})),
+		events: Array.isArray(schedule.events) ? schedule.events.map((item) => ({
 			period: item.period === 'all' ? 'all' : Number(item.period) || 'all',
 			title: item.title || '',
 			note: item.note || '',
 			description: item.description || '',
-		})) : clone(fallback.events),
-		periods: Array.isArray(week.periods) && week.periods.length === 4 ? week.periods.map((period, periodIndex) => ({
-			period: PERIODS[periodIndex],
-			x: normalizeBlock(period.x, fallback.periods[periodIndex].x),
-			y: normalizeBlock(period.y, fallback.periods[periodIndex].y),
-		})) : clone(fallback.periods),
+		})) : clone(DEFAULT_SCHEDULE.events),
 	};
+	
+	return normalized;
 }
 
 function normalizeBlock(block, fallback) {
-	const course = COURSES.includes(block?.course) ? block.course : fallback.course;
+	if (!block || typeof block !== 'object') {
+		return clone(fallback);
+	}
+	
+	const course = COURSES.includes(block.course) ? block.course : (fallback?.course || 'Bio');
 	const courseDefaults = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
 	return {
 		course,
-		teacher: block?.teacher || courseDefaults.teacher,
-		room: block?.room || courseDefaults.room,
-		length: Number(block?.length) === 2 ? 2 : 1,
-		note: block?.note || '',
+		teacher: block.teacher || courseDefaults.teacher,
+		room: block.room || courseDefaults.room,
+		length: Number(block.length) === 2 ? 2 : 1,
+		note: block.note || '',
 	};
 }
 
@@ -731,6 +658,63 @@ function saveSchedule(schedule) {
 	const normalized = ensureScheduleShape(schedule);
 	state.schedule = normalized;
 	localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+}
+
+function setupSettingsMenu() {
+	const settingsBtn = document.getElementById('settingsButton');
+	const settingsMenu = document.getElementById('settingsMenu');
+	const darkModeToggle = document.getElementById('darkModeToggle');
+	const lightModeToggle = document.getElementById('lightModeToggle');
+
+	if (!settingsBtn) return;
+
+	settingsBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		if (settingsMenu) {
+			settingsMenu.classList.toggle('hidden');
+		}
+	});
+
+	if (darkModeToggle) {
+		darkModeToggle.addEventListener('click', () => {
+			setDarkMode(true);
+			if (settingsMenu) settingsMenu.classList.add('hidden');
+		});
+	}
+
+	if (lightModeToggle) {
+		lightModeToggle.addEventListener('click', () => {
+			setDarkMode(false);
+			if (settingsMenu) settingsMenu.classList.add('hidden');
+		});
+	}
+
+	document.addEventListener('click', (e) => {
+		if (settingsMenu && !settingsMenu.contains(e.target) && e.target !== settingsBtn) {
+			settingsMenu.classList.add('hidden');
+		}
+	});
+}
+
+function setDarkMode(isDark) {
+	state.darkMode = isDark;
+	localStorage.setItem('smcs-schedule-dark-mode', isDark ? 'true' : 'false');
+	
+	if (isDark) {
+		document.documentElement.style.colorScheme = 'dark';
+		document.body.classList.remove('light-mode');
+		document.body.classList.add('dark-mode');
+	} else {
+		document.documentElement.style.colorScheme = 'light';
+		document.body.classList.remove('dark-mode');
+		document.body.classList.add('light-mode');
+	}
+}
+
+function loadDarkModePreference() {
+	const saved = localStorage.getItem('smcs-schedule-dark-mode');
+	const isDark = saved === null ? true : saved === 'true';
+	setDarkMode(isDark);
 }
 
 function periodHasDouble(period) {
@@ -754,42 +738,12 @@ function isAuthenticated() {
 	return localStorage.getItem(AUTH_KEY) === 'ok';
 }
 
-function createNewWeek() {
-	const schedule = state.schedule;
-	const nextNumber = schedule.weeks.length + 1;
-	const weekId = `week-${nextNumber}`;
-	const week = createBlankWeek(weekId, `Week ${nextNumber}`, `Custom Week ${nextNumber}`);
-	schedule.weeks.push(week);
-	schedule.activeWeekId = weekId;
-	state.adminWeekId = weekId;
-	saveSchedule(schedule);
-	renderAdminPage();
-}
-
-function duplicateWeek() {
-	const week = getActiveAdminWeek();
-	if (!week) {
-		return;
-	}
-	const schedule = state.schedule;
-	const nextNumber = schedule.weeks.length + 1;
-	const duplicate = clone(week);
-	duplicate.id = `week-${nextNumber}`;
-	duplicate.name = `${week.name} Copy`;
-	schedule.weeks.push(duplicate);
-	schedule.activeWeekId = duplicate.id;
-	state.adminWeekId = duplicate.id;
-	saveSchedule(schedule);
-	renderAdminPage();
-}
-
 function resetSampleSchedule() {
-	if (!window.confirm('Reset the schedule in this browser to the sample weeks?')) {
+	if (!window.confirm('Reset the schedule to the default?')) {
 		return;
 	}
 	const fresh = clone(DEFAULT_SCHEDULE);
 	saveSchedule(fresh);
-	state.adminWeekId = fresh.activeWeekId;
 	renderAdminPage();
 }
 
@@ -805,39 +759,17 @@ function exportSchedule() {
 }
 
 function addEventRow() {
-	const week = getActiveAdminWeek();
-	if (!week) {
-		return;
-	}
-	week.events.push({ period: 'all', title: '', note: '', description: '' });
-	saveSchedule(state.schedule);
+	const schedule = state.schedule;
+	schedule.events.push({ period: 'all', title: '', note: '', description: '' });
+	saveSchedule(schedule);
 	renderAdminPage();
 }
 
 function deleteEventRow(index) {
-	const week = getActiveAdminWeek();
-	if (!week) {
-		return;
-	}
-	week.events.splice(index, 1);
-	saveSchedule(state.schedule);
+	const schedule = state.schedule;
+	schedule.events.splice(index, 1);
+	saveSchedule(schedule);
 	renderAdminPage();
-}
-
-function createBlankWeek(id, name, focus) {
-	return {
-		id,
-		name,
-		focus,
-		notes: 'Add weekly notes here.',
-		events: [],
-		periods: [
-			createPeriod(1, createBlock('Bio'), createBlock('CS')),
-			createPeriod(2, createBlock('CS'), createBlock('Bio')),
-			createPeriod(3, createBlock('ESS'), createBlock('FOT')),
-			createPeriod(4, createBlock('FOT'), createBlock('ESS')),
-		],
-	};
 }
 
 function clone(value) {
