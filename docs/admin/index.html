@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>SMCS Schedule Admin</title>
+	<link rel="stylesheet" href="../styles.css">
+</head>
+<body class="admin-body">
+	<div class="app-shell">
+		<header class="topbar">
+			<div>
+				<p class="eyebrow">SMCS Schedule</p>
+				<h1>Schedule Editor</h1>
+				<p class="lede">Drag blocks between periods, create new ones, or delete existing blocks.</p>
+			</div>
+			<div class="topbar-actions">
+				<button id="addBlockButton" class="primary-btn">Add Block</button>
+				<button id="logoutButton" class="secondary-btn" type="button">Logout</button>
+			</div>
+		</header>
+
+		<section class="mobile-toolbar">
+			<label>
+				<span>Day</span>
+				<select id="mobileDaySelect"></select>
+			</label>
+		</section>
+
+		<section class="desktop-board">
+			<div id="scheduleGrid" class="schedule-grid"></div>
+		</section>
+
+		<section class="mobile-board">
+			<div id="mobileSchedule" class="mobile-schedule"></div>
+		</section>
+	</div>
+
+	<div id="blockModal" class="modal hidden" aria-hidden="true">
+		<div class="modal-card">
+			<div class="modal-header">
+				<h2>Add Block</h2>
+				<button id="closeModalButton" class="icon-btn" type="button" aria-label="Close">×</button>
+			</div>
+			<form id="blockForm" class="stack-form compact">
+				<div class="form-row">
+					<label>
+						<span>Day</span>
+						<select name="day" required>
+							<option value="MON">Mon</option>
+							<option value="TUE">Tue</option>
+							<option value="WED">Wed</option>
+							<option value="THU">Thu</option>
+							<option value="FRI">Fri</option>
+						</select>
+					</label>
+					<label>
+						<span>Start Period</span>
+						<select name="periodStart" required>
+							<option value="1">1</option>
+							<option value="2">2</option>
+							<option value="3">3</option>
+							<option value="4">4</option>
+						</select>
+					</label>
+				</div>
+				<div class="form-row">
+					<label>
+						<span>Length</span>
+						<select name="length" required>
+							<option value="1">1</option>
+							<option value="2">2</option>
+						</select>
+					</label>
+					<label>
+						<span>Course</span>
+						<select name="course" required>
+							<option value="Bio">Bio</option>
+							<option value="CS">CS</option>
+							<option value="ESS">ESS</option>
+							<option value="FOT">FOT</option>
+						</select>
+					</label>
+				</div>
+				<div class="form-row">
+					<label>
+						<span>Group</span>
+						<select name="group" required>
+							<option value="X">X</option>
+							<option value="Y">Y</option>
+						</select>
+					</label>
+					<label>
+						<span>Room</span>
+						<input name="room" type="text" placeholder="101" required>
+					</label>
+				</div>
+				<button type="submit" class="primary-btn">Save Block</button>
+			</form>
+		</div>
+	</div>
+
+	<script src="../app.js"></script>
+</body>
+</html>
