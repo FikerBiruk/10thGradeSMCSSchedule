@@ -550,6 +550,227 @@ a {
 	align-items: center;
 }
 
+/* ============================================ */
+/* TABLE LAYOUT STYLES                         */
+/* ============================================ */
+
+.schedule-table {
+	width: 100%;
+	border-collapse: collapse;
+	background: transparent;
+	margin: 0;
+}
+
+.schedule-table thead {
+	background: rgba(255, 255, 255, 0.04);
+}
+
+.schedule-table th {
+	padding: 16px 14px;
+	text-align: left;
+	font-weight: 700;
+	color: var(--muted);
+	border-bottom: 1px solid var(--line);
+	font-size: 0.9rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.schedule-table td {
+	padding: 16px 14px;
+	border-bottom: 1px solid var(--line);
+	vertical-align: top;
+}
+
+.schedule-table tbody tr:last-child td {
+	border-bottom: none;
+}
+
+.period-col {
+	width: 100px;
+	color: var(--muted);
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.period-label {
+	display: block;
+	font-size: 1rem;
+	color: var(--text);
+}
+
+.double-indicator {
+	display: block;
+	font-size: 0.8rem;
+	color: var(--warning);
+	margin-top: 2px;
+}
+
+.block-col {
+	flex: 1;
+	min-width: 180px;
+}
+
+.block-col.block-x {
+	border-left: 4px solid rgba(89, 212, 179, 0.32);
+	background: rgba(89, 212, 179, 0.04);
+}
+
+.block-col.block-y {
+	border-left: 4px solid rgba(132, 165, 255, 0.32);
+	background: rgba(132, 165, 255, 0.04);
+}
+
+.table-block {
+	display: grid;
+	gap: 6px;
+}
+
+.course-name {
+	font-size: 1.1rem;
+	font-weight: 700;
+	color: var(--text);
+}
+
+.teacher-name {
+	font-size: 0.95rem;
+	color: var(--muted);
+}
+
+.room-number {
+	font-size: 0.9rem;
+	color: var(--muted-2);
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+	font-weight: 600;
+}
+
+/* ============================================ */
+/* ADMIN TABLE CELL STYLES (DRAG & DROP)      */
+/* ============================================ */
+
+.admin-block-cell {
+	padding: 12px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 2px solid rgba(255, 255, 255, 0.06);
+	border-radius: 12px;
+	cursor: grab;
+	transition: all 0.2s ease;
+	display: grid;
+	gap: 8px;
+}
+
+.admin-block-cell:hover {
+	background: rgba(255, 255, 255, 0.08);
+	border-color: rgba(255, 255, 255, 0.12);
+}
+
+.admin-block-cell.drag-over {
+	background: rgba(82, 214, 197, 0.15);
+	border-color: rgba(82, 214, 197, 0.42);
+	box-shadow: 0 0 0 3px rgba(82, 214, 197, 0.12);
+}
+
+.admin-block-cell.dragging {
+	opacity: 0.5;
+}
+
+.cell-display {
+	display: grid;
+	gap: 4px;
+}
+
+.double-badge {
+	display: inline-block;
+	background: rgba(255, 203, 107, 0.16);
+	color: #ffe1a2;
+	padding: 3px 8px;
+	border-radius: 6px;
+	font-size: 0.75rem;
+	font-weight: 700;
+	margin-top: 4px;
+	width: fit-content;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+.cell-editor {
+	display: grid;
+	gap: 10px;
+	background: rgba(255, 255, 255, 0.03);
+	padding: 10px;
+	border-radius: 8px;
+	border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cell-editor.hidden {
+	display: none;
+}
+
+.mini-field {
+	display: grid;
+	gap: 4px;
+}
+
+.mini-field span {
+	color: var(--muted);
+	font-size: 0.75rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.mini-field input,
+.mini-field select {
+	width: 100%;
+	border-radius: 8px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: rgba(255, 255, 255, 0.04);
+	color: var(--text);
+	padding: 8px 10px;
+	font-size: 0.9rem;
+	outline: none;
+}
+
+.mini-field input:focus,
+.mini-field select:focus {
+	border-color: rgba(82, 214, 197, 0.42);
+	box-shadow: 0 0 0 2px rgba(82, 214, 197, 0.12);
+}
+
+/* ============================================ */
+/* EVENT EDITOR STYLES                        */
+/* ============================================ */
+
+.event-actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	justify-content: flex-end;
+	flex-wrap: wrap;
+}
+
+.small-btn {
+	padding: 8px 12px;
+	font-size: 0.85rem;
+	border-radius: 8px;
+}
+
+.hidden {
+	display: none !important;
+}
+
+.event-description {
+	color: var(--muted-2);
+	font-size: 0.94rem;
+	line-height: 1.5;
+	margin-top: 6px;
+	padding: 10px;
+	background: rgba(255, 255, 255, 0.03);
+	border-radius: 8px;
+	border-left: 3px solid var(--accent);
+}
+
 @media (max-width: 1100px) {
 	.public-grid,
 	.admin-grid {
@@ -605,5 +826,104 @@ a {
 
 	.event-row {
 		align-items: stretch;
+	}
+
+	/* Mobile table styles */
+	.schedule-table {
+		font-size: 0.9rem;
+		display: block;
+		width: 100%;
+		border-collapse: collapse;
+	}
+
+	.schedule-table thead {
+		display: none;
+	}
+
+	.schedule-table tbody,
+	.schedule-table tr,
+	.schedule-table td {
+		display: block;
+		width: 100%;
+	}
+
+	.schedule-table tbody tr {
+		margin-bottom: 16px;
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: 12px;
+		padding: 12px;
+		break-inside: avoid;
+	}
+
+	.schedule-table td {
+		padding: 8px 0;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+		margin-bottom: 8px;
+	}
+
+	.schedule-table td[rowspan] {
+		border-bottom: none;
+		margin-bottom: 0;
+	}
+
+	.schedule-table td:last-child {
+		border-bottom: none;
+		margin-bottom: 0;
+	}
+
+	.period-col {
+		width: 100%;
+		margin-bottom: 12px;
+		padding-bottom: 12px;
+		border-bottom: 2px solid rgba(255, 255, 255, 0.06);
+	}
+
+	.block-col {
+		margin-bottom: 0;
+		padding-bottom: 0;
+		border-bottom: none;
+	}
+
+	.block-col::before {
+		content: attr(data-block);
+		text-transform: uppercase;
+		color: var(--muted);
+		font-size: 0.75rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		display: block;
+		margin-bottom: 4px;
+	}
+
+	.block-col.block-x::before {
+		content: "Block X";
+	}
+
+	.block-col.block-y::before {
+		content: "Block Y";
+	}
+
+	.admin-block-cell {
+		padding: 10px;
+		font-size: 0.9rem;
+	}
+
+	.cell-display .course-name {
+		font-size: 1rem;
+	}
+
+	.cell-display .teacher-name,
+	.cell-display .room-number {
+		font-size: 0.85rem;
+	}
+
+	.event-actions {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.small-btn {
+		width: 100%;
 	}
 }
