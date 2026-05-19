@@ -1,11 +1,24 @@
-// Version 3.2 - Final Fixes for UI and Data Integrity
+// Version 4.0 - Firebase Sync Integration
 
-const STORAGE_KEY = "smcs-schedule-data-v4";
+const firebaseConfig = {
+	apiKey: "AIzaSyBchrPCAav08CfPBKSTmaHvMrEoid2NxEU",
+	authDomain: "smcs-schedule.firebaseapp.com",
+	databaseURL: "https://smcs-schedule-default-rtdb.firebaseio.com",
+	projectId: "smcs-schedule",
+	storageBucket: "smcs-schedule.firebasestorage.app",
+	messagingSenderId: "149883464185",
+	appId: "1:149883464185:web:7658c2705351908b453528",
+	measurementId: "G-33TVT5J6C6"
+};
+
+// Initialize Firebase using compat mode for simple browser script support
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 const AUTH_KEY = "smcs-schedule-admin-auth";
 const ADMIN_USERNAME = "charles";
 const ADMIN_PASSWORD = "SMCS";
 const COURSES = ["Bio", "CS", "ESS", "FOT"];
-const PERIOD_OPTIONS = [1, 2, 3, 4];
 
 const COURSE_LIBRARY = {
 	Bio: { teacher: "Mr. Yu", room: "2614" },
@@ -27,37 +40,39 @@ const DEFAULT_SCHEDULE = {
 };
 
 const state = {
-	schedule: null,
+	schedule: DEFAULT_SCHEDULE,
 	darkMode: true,
 };
 
-function createBlock(course, overrides = {}) {
-	const base = COURSE_LIBRARY[course] || { teacher: "TBA", room: "TBA" };
-	return {
-		course,
-		teacher: overrides.teacher || base.teacher,
-		room: overrides.room || base.room,
-		length: overrides.length || 1,
-		note: overrides.note || "",
-	};
-}
-
-function createPeriod(num) {
-	return {
-		period: num,
-		x: createBlock("Bio"),
-		y: createBlock("CS")
-	};
-}
-
 document.addEventListener("DOMContentLoaded", () => {
 	const page = document.body.dataset.page;
-	state.schedule = loadSchedule();
 	loadDarkModePreference();
+
+	// Initialize Real-time Sync
+	db.ref('schedule').on('value', (snapshot) => {
+		const data = snapshot.val();
+		if (data) {
+			state.schedule = ensureScheduleShape(data);
+		} else {
+			// First time setup: push default schedule to Firebase
+			saveSchedule(DEFAULT_SCHEDULE);
+		}
+
+		// Refresh the UI whenever data changes in Firebase
+		if (page === "public") renderPublicPage();
+		if (page === "admin") renderAdminPage();
+	});
 
 	if (page === "public") initPublicPage();
 	if (page === "admin") initAdminPage();
 });
+
+function saveSchedule(s) {
+	const n = ensureScheduleShape(s);
+	state.schedule = n;
+	db.ref('schedule').set(n);
+	return n;
+}
 
 function initPublicPage() {
 	renderPublicPage();
@@ -71,13 +86,10 @@ function initAdminPage() {
 		document.getElementById("adminLoginForm").addEventListener("submit", handleAdminLogin);
 		return;
 	}
-
 	document.getElementById("loginPanel").hidden = true;
 	document.getElementById("adminApp").hidden = false;
-
 	renderAdminPage();
 	setupSettingsMenu();
-
 	document.getElementById("logoutButton").addEventListener("click", handleLogout);
 	const adminApp = document.getElementById("adminApp");
 	adminApp.addEventListener("input", handleAdminInput);
@@ -107,7 +119,6 @@ function handleLogout() {
 function handleAdminInput(event) {
 	const target = event.target;
 	const schedule = state.schedule;
-
 	if (target.matches("[data-event-field]")) {
 		const idx = Number(target.dataset.eventIndex);
 		const field = target.dataset.eventField;
@@ -117,7 +128,6 @@ function handleAdminInput(event) {
 			updateSaveStatus();
 		}
 	}
-
 	if (target.matches("[data-room-edit]")) {
 		const idx = Number(target.dataset.periodIndex);
 		const key = target.dataset.blockKey;
@@ -145,7 +155,6 @@ function handleAdminClick(event) {
 	if (target.matches("#exportButton")) exportSchedule();
 	if (target.matches("#addEventButton")) addEventRow();
 	if (target.matches("[data-action='delete-event']")) deleteEventRow(Number(target.dataset.eventIndex));
-
 	if (target.matches("[data-action='toggle-description']")) {
 		const idx = target.dataset.eventIndex;
 		const el = document.querySelector(`.desc-container[data-event-index="${idx}"]`);
@@ -154,14 +163,12 @@ function handleAdminClick(event) {
 			target.textContent = el.classList.contains('hidden') ? 'Add description' : 'Hide description';
 		}
 	}
-
 	if (target.matches("[data-action='toggle-double']")) {
 		const idx = Number(target.dataset.periodIndex);
 		const key = target.dataset.blockKey;
 		const schedule = state.schedule;
 		schedule.periods[idx][key].length = Number(schedule.periods[idx][key].length) === 2 ? 1 : 2;
 		saveSchedule(schedule);
-		renderAdminPage();
 	}
 }
 
@@ -182,14 +189,11 @@ function renderAdminPage() {
 
 function renderPublicTable(schedule) {
 	let html = `<table class="schedule-table"><thead><tr><th class="period-col">Period</th><th class="block-col">Block X</th><th class="block-col">Block Y</th></tr></thead><tbody>`;
-
 	schedule.periods.forEach((p, idx) => {
 		const prev = idx > 0 ? schedule.periods[idx-1] : null;
 		const skipX = prev && Number(prev.x.length) === 2;
 		const skipY = prev && Number(prev.y.length) === 2;
-
 		if (skipX && skipY) return;
-
 		html += `<tr class="period-row">
 			<td class="period-col"><span class="period-label">Period ${p.period}</span></td>
 			${skipX ? '' : `<td class="block-col block-x" ${Number(p.x.length) === 2 ? 'rowspan="2"' : ''}>
@@ -210,7 +214,6 @@ function renderPublicTable(schedule) {
 			</td>`}
 		</tr>`;
 	});
-
 	return html + `</tbody></table>`;
 }
 
@@ -249,7 +252,6 @@ function renderClassCards() {
 function setupDragAndDrop() {
 	const cards = document.querySelectorAll('.draggable-card');
 	const zones = document.querySelectorAll('.admin-table .block-col');
-
 	cards.forEach(c => {
 		c.addEventListener('dragstart', e => {
 			e.dataTransfer.setData('text/plain', c.dataset.course);
@@ -257,7 +259,6 @@ function setupDragAndDrop() {
 		});
 		c.addEventListener('dragend', () => c.classList.remove('dragging'));
 	});
-
 	zones.forEach(z => {
 		z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
 		z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
@@ -273,7 +274,6 @@ function setupDragAndDrop() {
 			block.teacher = lib.teacher;
 			block.room = lib.room;
 			saveSchedule(state.schedule);
-			renderAdminPage();
 		});
 	});
 }
@@ -304,20 +304,9 @@ function renderEventFeed(schedule) {
 	return schedule.events.map(ev => `<article class="event-card"><div class="inline-line"><span class="event-chip"><small>${ev.period === 'all' ? 'All day' : 'Period ' + ev.period}</small></span><span class="tag">Event</span></div><div class="event-title">${escapeHtml(ev.title)}</div>${ev.note ? `<div class="event-note">${escapeHtml(ev.note)}</div>` : ''}${ev.description ? `<div class="event-description">${escapeHtml(ev.description)}</div>` : ''}</article>`).join('');
 }
 
-function loadSchedule() {
-	const raw = localStorage.getItem(STORAGE_KEY);
-	if (!raw) return saveSchedule(DEFAULT_SCHEDULE);
-	try {
-		return ensureScheduleShape(JSON.parse(raw));
-	} catch (e) {
-		return saveSchedule(DEFAULT_SCHEDULE);
-	}
-}
-
 function ensureScheduleShape(s) {
 	if (!s || !Array.isArray(s.periods)) return JSON.parse(JSON.stringify(DEFAULT_SCHEDULE));
 	let ps = s.periods;
-	while (ps.length < 4) ps.push(createPeriod(ps.length + 1));
 	ps = ps.slice(0, 4).map((p, i) => ({
 		period: i + 1,
 		x: normalizeBlock(p.x),
@@ -329,13 +318,6 @@ function ensureScheduleShape(s) {
 function normalizeBlock(b) {
 	const d = COURSE_LIBRARY[b?.course] || COURSE_LIBRARY.Bio;
 	return { course: b?.course || "Bio", teacher: b?.teacher || d.teacher, room: b?.room || d.room, length: Number(b?.length) === 2 ? 2 : 1, note: b?.note || "" };
-}
-
-function saveSchedule(s) {
-	const n = ensureScheduleShape(s);
-	state.schedule = n;
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(n));
-	return n;
 }
 
 function setupSettingsMenu() {
@@ -363,13 +345,11 @@ function loadDarkModePreference() {
 
 function updateSaveStatus() {
 	const s = document.getElementById('saveStatus');
-	if (s) s.textContent = 'Saved to browser';
+	if (s) s.textContent = 'Synced with Cloud';
 }
 
 function isAuthenticated() { return localStorage.getItem(AUTH_KEY) === 'ok'; }
-
-function resetSampleSchedule() { if (confirm('Reset to default?')) { saveSchedule(DEFAULT_SCHEDULE); renderAdminPage(); } }
-
+function resetSampleSchedule() { if (confirm('Reset to default for EVERYONE?')) { saveSchedule(DEFAULT_SCHEDULE); } }
 function exportSchedule() {
 	const blob = new Blob([JSON.stringify(state.schedule, null, 2)], { type: 'application/json' });
 	const url = URL.createObjectURL(blob);
@@ -377,9 +357,7 @@ function exportSchedule() {
 	a.href = url; a.download = 'schedule.json'; a.click();
 	URL.revokeObjectURL(url);
 }
-
-function addEventRow() { state.schedule.events.push({ period: 'all', title: '', note: '', description: '' }); saveSchedule(state.schedule); renderAdminPage(); }
-function deleteEventRow(i) { state.schedule.events.splice(i, 1); saveSchedule(state.schedule); renderAdminPage(); }
-
+function addEventRow() { state.schedule.events.push({ period: 'all', title: '', note: '', description: '' }); saveSchedule(state.schedule); }
+function deleteEventRow(i) { state.schedule.events.splice(i, 1); saveSchedule(state.schedule); }
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m])); }
 function escapeAttribute(s) { return escapeHtml(s).replace(/`/g, '&#96;'); }
