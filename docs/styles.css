@@ -88,6 +88,7 @@ a {
 	align-items: flex-end;
 	justify-content: space-between;
 	gap: 20px;
+	position: relative;
 }
 
 .hero-copy {
@@ -122,6 +123,7 @@ a {
 	align-items: flex-end;
 	gap: 12px;
 	flex-wrap: wrap;
+	position: relative; /* Added relative positioning for settings menu */
 }
 
 .public-grid,
@@ -337,8 +339,7 @@ a {
 	gap: 12px;
 }
 
-.event-card,
-.event-row {
+.event-card {
 	border-radius: 18px;
 	padding: 14px;
 	background: rgba(255, 255, 255, 0.04);
@@ -347,10 +348,25 @@ a {
 	gap: 6px;
 }
 
+/* Horizontal Event Editor Styles */
+.event-editor-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+	gap: 16px;
+}
+
 .event-row {
-	grid-template-columns: minmax(120px, 160px) minmax(0, 1fr) minmax(0, 1fr) auto;
-	align-items: center;
-	gap: 10px;
+	border-radius: 18px;
+	padding: 16px;
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.event-row .field {
+	flex: 1;
 }
 
 .event-title {
@@ -363,13 +379,15 @@ a {
 
 .field {
 	display: grid;
-	gap: 8px;
+	gap: 6px;
 }
 
 .field span {
 	color: var(--muted);
-	font-size: 0.9rem;
+	font-size: 0.85rem;
 	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
 }
 
 .compact-field {
@@ -380,17 +398,18 @@ a {
 .field textarea,
 .field select {
 	width: 100%;
-	border-radius: 14px;
+	border-radius: 12px;
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	background: rgba(255, 255, 255, 0.04);
 	color: var(--text);
-	padding: 12px 14px;
+	padding: 10px 12px;
 	outline: none;
+	font-size: 0.95rem;
 }
 
 .field textarea {
 	resize: vertical;
-	min-height: 90px;
+	min-height: 70px;
 }
 
 .field input:focus,
@@ -654,15 +673,9 @@ a {
 	background: rgba(255, 255, 255, 0.05);
 	border: 2px solid rgba(255, 255, 255, 0.06);
 	border-radius: 12px;
-	cursor: grab;
 	transition: all 0.2s ease;
 	display: grid;
 	gap: 8px;
-}
-
-.admin-block-cell:hover {
-	background: rgba(255, 255, 255, 0.08);
-	border-color: rgba(255, 255, 255, 0.12);
 }
 
 .admin-block-cell.drag-over {
@@ -671,13 +684,32 @@ a {
 	box-shadow: 0 0 0 3px rgba(82, 214, 197, 0.12);
 }
 
-.admin-block-cell.dragging {
-	opacity: 0.5;
-}
-
 .cell-display {
 	display: grid;
 	gap: 4px;
+}
+
+.block-actions {
+	margin-top: 8px;
+	display: flex;
+	gap: 8px;
+}
+
+.toggle-double-btn {
+	padding: 4px 8px;
+	font-size: 0.75rem;
+	font-weight: 700;
+	border-radius: 6px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: rgba(255, 255, 255, 0.05);
+	color: var(--muted);
+	cursor: pointer;
+}
+
+.toggle-double-btn.active {
+	background: rgba(255, 203, 107, 0.16);
+	color: #ffe1a2;
+	border-color: rgba(255, 203, 107, 0.3);
 }
 
 .double-badge {
@@ -694,50 +726,6 @@ a {
 	letter-spacing: 0.02em;
 }
 
-.cell-editor {
-	display: grid;
-	gap: 10px;
-	background: rgba(255, 255, 255, 0.03);
-	padding: 10px;
-	border-radius: 8px;
-	border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.cell-editor.hidden {
-	display: none;
-}
-
-.mini-field {
-	display: grid;
-	gap: 4px;
-}
-
-.mini-field span {
-	color: var(--muted);
-	font-size: 0.75rem;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-}
-
-.mini-field input,
-.mini-field select {
-	width: 100%;
-	border-radius: 8px;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	background: rgba(255, 255, 255, 0.04);
-	color: var(--text);
-	padding: 8px 10px;
-	font-size: 0.9rem;
-	outline: none;
-}
-
-.mini-field input:focus,
-.mini-field select:focus {
-	border-color: rgba(82, 214, 197, 0.42);
-	box-shadow: 0 0 0 2px rgba(82, 214, 197, 0.12);
-}
-
 /* ============================================ */
 /* EVENT EDITOR STYLES                        */
 /* ============================================ */
@@ -746,18 +734,24 @@ a {
 	display: flex;
 	gap: 8px;
 	align-items: center;
-	justify-content: flex-end;
-	flex-wrap: wrap;
+	margin-top: auto;
+	padding-top: 8px;
+	border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .small-btn {
-	padding: 8px 12px;
-	font-size: 0.85rem;
+	padding: 6px 10px;
+	font-size: 0.8rem;
 	border-radius: 8px;
+	flex: 1;
 }
 
 .hidden {
 	display: none !important;
+}
+
+.event-description-field {
+	margin-top: 4px;
 }
 
 .event-description {
@@ -828,6 +822,7 @@ a {
 
 .class-cards-panel {
 	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
 	gap: 10px;
 }
 
@@ -853,12 +848,6 @@ a {
 .draggable-card.dragging {
 	opacity: 0.6;
 	cursor: grabbing;
-}
-
-.draggable-card.drag-over {
-	background: rgba(82, 214, 197, 0.25);
-	border-color: var(--accent);
-	box-shadow: 0 0 0 3px rgba(82, 214, 197, 0.12);
 }
 
 .card-title {
@@ -937,31 +926,8 @@ body.light-mode .surface {
 	background: linear-gradient(180deg, rgba(241, 245, 250, 0.9), rgba(235, 241, 249, 0.94));
 }
 
-body.light-mode .ghost-btn,
-body.light-mode .secondary-btn {
-	border-color: rgba(0, 0, 0, 0.11);
-}
-
-body.light-mode .schedule-table thead {
-	background: rgba(0, 0, 0, 0.04);
-}
-
-body.light-mode .block-col.block-x {
-	border-left-color: rgba(89, 212, 179, 0.48);
-	background: rgba(89, 212, 179, 0.08);
-}
-
-body.light-mode .block-col.block-y {
-	border-left-color: rgba(132, 165, 255, 0.48);
-	background: rgba(132, 165, 255, 0.08);
-}
-
 body.light-mode .settings-menu {
 	background: linear-gradient(180deg, rgba(241, 245, 250, 0.95), rgba(235, 241, 249, 0.98));
-}
-
-body.light-mode .settings-item:hover {
-	background: rgba(0, 0, 0, 0.06);
 }
 
 /* ============================================ */
@@ -981,47 +947,19 @@ body.light-mode .settings-item:hover {
 	display: inline-block;
 }
 
-.faan-credit[data-tooltip] {
-	border-bottom: 2px solid var(--accent);
-}
-
-.faan-credit:hover::after {
-	content: attr(data-tooltip);
-	position: absolute;
-	bottom: 120%;
-	left: 50%;
-	transform: translateX(-50%);
-	background: rgba(0, 0, 0, 0.9);
-	color: var(--accent);
-	padding: 8px 12px;
-	border-radius: 8px;
-	font-size: 0.85rem;
-	white-space: nowrap;
-	z-index: 200;
-	font-weight: 600;
-	pointer-events: none;
-}
-
-.faan-credit:hover::before {
-	content: '';
-	position: absolute;
-	bottom: 108%;
-	left: 50%;
-	transform: translateX(-50%);
-	border: 6px solid transparent;
-	border-top-color: rgba(0, 0, 0, 0.9);
-	z-index: 200;
-	pointer-events: none;
-}
-
 /* ============================================ */
 /* ADMIN GRID 2 (NEW LAYOUT)                  */
 /* ============================================ */
 
 .admin-grid-2 {
 	display: grid;
-	grid-template-columns: 1fr minmax(260px, 0.35fr);
+	grid-template-columns: 1fr minmax(300px, 0.4fr);
 	gap: 20px;
+}
+
+.full-width-section {
+	grid-column: 1 / -1;
+	margin-top: 10px;
 }
 
 @media (max-width: 1100px) {
@@ -1029,158 +967,9 @@ body.light-mode .settings-item:hover {
 		grid-template-columns: 1fr;
 	}
 }
-	.public-grid,
-	.admin-grid {
-		grid-template-columns: 1fr;
-	}
-
-	.sidebar-stack {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-}
 
 @media (max-width: 780px) {
-	body {
-		padding: 14px;
-	}
-
-	.hero,
-	.toolbar-panel,
-	.main-panel,
-	.editor-panel,
-	.info-card,
-	.auth-card {
-		padding: 18px;
-	}
-
-	.hero {
-		flex-direction: column;
-		align-items: flex-start;
-	}
-
-	.week-meta-grid,
-	.block-columns,
-	.sidebar-stack,
-	.event-row {
+	.event-editor-list {
 		grid-template-columns: 1fr;
-	}
-
-	.toolbar-main {
-		width: 100%;
-		flex-direction: column;
-		align-items: stretch;
-	}
-
-	.hero-actions,
-	.toolbar-actions {
-		width: 100%;
-	}
-
-	.hero-actions .ghost-btn,
-	.hero-actions .compact-field {
-		flex: 1 1 100%;
-	}
-
-	.event-row {
-		align-items: stretch;
-	}
-
-	/* Mobile table styles */
-	.schedule-table {
-		font-size: 0.9rem;
-		display: block;
-		width: 100%;
-		border-collapse: collapse;
-	}
-
-	.schedule-table thead {
-		display: none;
-	}
-
-	.schedule-table tbody,
-	.schedule-table tr,
-	.schedule-table td {
-		display: block;
-		width: 100%;
-	}
-
-	.schedule-table tbody tr {
-		margin-bottom: 16px;
-		background: rgba(255, 255, 255, 0.03);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: 12px;
-		padding: 12px;
-		break-inside: avoid;
-	}
-
-	.schedule-table td {
-		padding: 8px 0;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-		margin-bottom: 8px;
-	}
-
-	.schedule-table td[rowspan] {
-		border-bottom: none;
-		margin-bottom: 0;
-	}
-
-	.schedule-table td:last-child {
-		border-bottom: none;
-		margin-bottom: 0;
-	}
-
-	.period-col {
-		width: 100%;
-		margin-bottom: 12px;
-		padding-bottom: 12px;
-		border-bottom: 2px solid rgba(255, 255, 255, 0.06);
-	}
-
-	.block-col {
-		margin-bottom: 0;
-		padding-bottom: 0;
-		border-bottom: none;
-	}
-
-	.block-col::before {
-		content: attr(data-block);
-		text-transform: uppercase;
-		color: var(--muted);
-		font-size: 0.75rem;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		display: block;
-		margin-bottom: 4px;
-	}
-
-	.block-col.block-x::before {
-		content: "Block X";
-	}
-
-	.block-col.block-y::before {
-		content: "Block Y";
-	}
-
-	.admin-block-cell {
-		padding: 10px;
-		font-size: 0.9rem;
-	}
-
-	.cell-display .course-name {
-		font-size: 1rem;
-	}
-
-	.cell-display .teacher-name,
-	.cell-display .room-number {
-		font-size: 0.85rem;
-	}
-
-	.event-actions {
-		flex-direction: column;
-		align-items: stretch;
-	}
-
-	.small-btn {
-		width: 100%;
 	}
 }

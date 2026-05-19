@@ -12,11 +12,16 @@
 			<div class="hero-copy">
 				<p class="eyebrow">SMCS Schedule Admin</p>
 				<h1>Schedule Editor</h1>
-				<p class="lede">Drag classes from the right panel and drop them into the schedule to assign periods. Click room numbers to edit them. Double periods auto-merge.</p>
+				<p class="lede">Drag classes from the panel and drop them into the schedule. Click room numbers to edit. Use the "Double" button to span two periods.</p>
 			</div>
 			<div class="hero-actions">
 				<a class="ghost-btn" href="../">Public View</a>
 				<button id="logoutButton" class="ghost-btn" type="button">Logout</button>
+				<button id="settingsButton" class="secondary-btn" type="button">Settings</button>
+				<div id="settingsMenu" class="settings-menu hidden">
+					<button id="darkModeToggle" class="settings-item" type="button">Dark Mode</button>
+					<button id="lightModeToggle" class="settings-item" type="button">Light Mode</button>
+				</div>
 			</div>
 		</header>
 
@@ -50,28 +55,29 @@
 			<div class="admin-grid-2">
 				<section class="surface editor-panel">
 					<p class="eyebrow">Schedule Editor</p>
-					<h2>Drag & Drop Classes</h2>
+					<h2>Periods & Blocks</h2>
 					<div id="adminSchedule" class="period-editor-list"></div>
 				</section>
 
 				<aside class="sidebar-stack">
 					<section class="surface info-card">
-						<p class="eyebrow">Available Classes</p>
+						<p class="eyebrow">Classes</p>
 						<h2>Drag to assign</h2>
 						<div id="adminClassCards" class="class-cards-panel"></div>
 					</section>
-
-					<section class="surface info-card">
-						<div class="panel-head compact-head">
-							<div>
-								<p class="eyebrow">Special Events</p>
-								<h2>Manage events</h2>
-							</div>
-							<button id="addEventButton" class="secondary-btn" type="button">Add Event</button>
-						</div>
-						<div id="eventsEditor" class="event-editor-list"></div>
-					</section>
 				</aside>
+
+				<!-- Special Events Editor Moved to Bottom -->
+				<section class="surface info-card full-width-section">
+					<div class="panel-head compact-head">
+						<div>
+							<p class="eyebrow">Special Events</p>
+							<h2>Manage events</h2>
+						</div>
+						<button id="addEventButton" class="secondary-btn" type="button">Add Event</button>
+					</div>
+					<div id="eventsEditor" class="event-editor-list"></div>
+				</section>
 			</div>
 		</section>
 	</div>

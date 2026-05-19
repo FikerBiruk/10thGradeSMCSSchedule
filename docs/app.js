@@ -1,4 +1,4 @@
-// Version 3.0 - Simple 4-period schedule without weeks
+// Version 3.1 - Enhanced Admin & UI Fixes
 
 const STORAGE_KEY = "smcs-schedule-data-v4";
 const AUTH_KEY = "smcs-schedule-admin-auth";
@@ -17,14 +17,13 @@ const COURSE_LIBRARY = {
 
 const DEFAULT_SCHEDULE = {
 	periods: [
-		createPeriod(1, createBlock("Bio", { room: "2614", note: "Lab prep" }), createBlock("CS", { room: "1702", note: "Design intro" })),
-		createPeriod(2, createBlock("CS", { room: "1702", note: "Coding workshop" }), createBlock("Bio", { room: "2614", note: "Theory review" })),
-		createPeriod(3, createBlock("ESS", { room: "1708", length: 2, note: "Field study" }), createBlock("FOT", { room: "1620", length: 2, note: "Workshop block" })),
-		createPeriod(4, createBlock("FOT", { room: "1620", note: "Build sprint" }), createBlock("ESS", { room: "1708", note: "Map work" })),
+		createPeriod(1, createBlock("Bio", { room: "2614", note: "" }), createBlock("CS", { room: "1702", note: "" })),
+		createPeriod(2, createBlock("CS", { room: "1702", note: "" }), createBlock("Bio", { room: "2614", note: "" })),
+		createPeriod(3, createBlock("ESS", { room: "1708", length: 1, note: "" }), createBlock("FOT", { room: "1620", length: 1, note: "" })),
+		createPeriod(4, createBlock("FOT", { room: "1620", note: "" }), createBlock("ESS", { room: "1708", note: "" })),
 	],
 	events: [
 		{ period: "all", title: "Welcome Assembly", note: "Gym after Period 2", description: "" },
-		{ period: 3, title: "Advisory Check-In", note: "Shortened transition between blocks", description: "" },
 	],
 };
 
@@ -48,17 +47,6 @@ function createPeriod(period, x, y) {
 	return { period, x, y };
 }
 
-function createWeek(id, name, focus, notes, events, periods) {
-	return {
-		id,
-		name,
-		focus,
-		notes,
-		events,
-		periods,
-	};
-}
-
 document.addEventListener("DOMContentLoaded", () => {
 	const page = document.body.dataset.page;
 	state.schedule = loadSchedule();
@@ -66,10 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	if (page === "public") {
 		initPublicPage();
-		return;
-	}
-
-	if (page === "admin") {
+	} else if (page === "admin") {
 		initAdminPage();
 	}
 });
@@ -77,12 +62,8 @@ document.addEventListener("DOMContentLoaded", () => {
 window.addEventListener("storage", (event) => {
 	if (event.key === STORAGE_KEY) {
 		state.schedule = loadSchedule();
-		if (document.body.dataset.page === "public") {
-			renderPublicPage();
-		}
-		if (document.body.dataset.page === "admin" && isAuthenticated()) {
-			renderAdminPage();
-		}
+		if (document.body.dataset.page === "public") renderPublicPage();
+		if (document.body.dataset.page === "admin" && isAuthenticated()) renderAdminPage();
 	}
 });
 
@@ -105,7 +86,6 @@ function initAdminPage() {
 		loginPanel.hidden = true;
 		adminApp.hidden = false;
 		renderAdminPage();
-		setupDragAndDrop();
 		setupSettingsMenu();
 	} else {
 		adminApp.hidden = true;
@@ -127,17 +107,13 @@ function handleAdminLogin(event) {
 	const errorBox = document.getElementById("loginError");
 
 	if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
-		errorBox.textContent = "Invalid username or password.";
+		errorBox.textContent = "Invalid credentials.";
 		errorBox.hidden = false;
 		return;
 	}
 
 	localStorage.setItem(AUTH_KEY, "ok");
-	document.getElementById("loginPanel").hidden = true;
-	document.getElementById("adminApp").hidden = false;
-	errorBox.hidden = true;
-	state.adminWeekId = state.schedule.activeWeekId;
-	renderAdminPage();
+	location.reload();
 }
 
 function handleLogout() {
@@ -150,70 +126,32 @@ function handleAdminInput(event) {
 	const schedule = state.schedule;
 
 	if (target.matches("[data-event-field]")) {
-		const eventIndex = Number(target.dataset.eventIndex);
-		const eventField = target.dataset.eventField;
-		if (!schedule.events[eventIndex]) {
-			return;
-		}
-		schedule.events[eventIndex][eventField] = target.value;
-		saveSchedule(schedule);
-		updateSaveStatus();
-		return;
-	}
-
-	if (target.matches("[data-block-field]")) {
-		const periodIndex = Number(target.dataset.periodIndex);
-		const blockKey = target.dataset.blockKey;
-		const field = target.dataset.blockField;
-		const period = schedule.periods[periodIndex];
-		if (!period) {
-			return;
-		}
-
-		const block = period[blockKey];
-		block[field] = field === "length" ? Number(target.value) : target.value;
-
-		if (field === "course") {
-			applyCourseDefaults(block, target.value);
+		const index = Number(target.dataset.eventIndex);
+		const field = target.dataset.eventField;
+		if (schedule.events[index]) {
+			schedule.events[index][field] = target.value;
 			saveSchedule(schedule);
-			renderAdminPage();
-			return;
+			updateSaveStatus();
 		}
-
-		saveSchedule(schedule);
-		updateSaveStatus();
 	}
 
-	// Handle room number inline editing
 	if (target.matches("[data-room-edit]")) {
-		const periodIndex = Number(target.dataset.periodIndex);
-		const blockKey = target.dataset.blockKey;
-		const period = schedule.periods[periodIndex];
-		if (!period) return;
-		
-		const block = period[blockKey];
-		block.room = target.value;
-		saveSchedule(schedule);
-		updateSaveStatus();
+		const idx = Number(target.dataset.periodIndex);
+		const key = target.dataset.blockKey;
+		if (schedule.periods[idx]) {
+			schedule.periods[idx][key].room = target.value;
+			saveSchedule(schedule);
+			updateSaveStatus();
+		}
 	}
 }
 
 function handleAdminChange(event) {
 	const target = event.target;
-	const schedule = state.schedule;
-
-	if (target.matches("[data-block-field='length']")) {
-		const periodIndex = Number(target.dataset.periodIndex);
-		const blockKey = target.dataset.blockKey;
-		schedule.periods[periodIndex][blockKey].length = Number(target.value);
-		saveSchedule(schedule);
-		updateSaveStatus();
-	}
-
 	if (target.matches("[data-event-field='period']")) {
-		const eventIndex = Number(target.dataset.eventIndex);
-		schedule.events[eventIndex].period = target.value === "all" ? "all" : Number(target.value);
-		saveSchedule(schedule);
+		const index = Number(target.dataset.eventIndex);
+		state.schedule.events[index].period = target.value === "all" ? "all" : Number(target.value);
+		saveSchedule(state.schedule);
 		updateSaveStatus();
 	}
 }
@@ -221,37 +159,25 @@ function handleAdminChange(event) {
 function handleAdminClick(event) {
 	const target = event.target;
 	
-	if (target.matches("#resetButton")) {
-		resetSampleSchedule();
-		return;
-	}
-	if (target.matches("#exportButton")) {
-		exportSchedule();
-		return;
-	}
-	if (target.matches("#addEventButton")) {
-		addEventRow();
-		return;
-	}
+	if (target.matches("#resetButton")) resetSampleSchedule();
+	if (target.matches("#exportButton")) exportSchedule();
+	if (target.matches("#addEventButton")) addEventRow();
+
 	if (target.matches("[data-action='delete-event']")) {
 		deleteEventRow(Number(target.dataset.eventIndex));
-		return;
 	}
+
 	if (target.matches("[data-action='toggle-description']")) {
-		const eventIndex = Number(target.dataset.eventIndex);
-		const descField = document.querySelector(`[data-event-field="description"][data-event-index="${eventIndex}"]`);
-		if (descField) {
-			descField.parentElement.classList.toggle('hidden');
-			target.textContent = descField.parentElement.classList.contains('hidden') ? 'Add description' : 'Hide description';
+		const index = target.dataset.eventIndex;
+		const container = document.querySelector(`.desc-container[data-event-index="${index}"]`);
+		if (container) {
+			container.classList.toggle('hidden');
+			target.textContent = container.classList.contains('hidden') ? 'Add description' : 'Hide description';
 		}
 	}
-	if (target.matches("[data-action='edit-room']")) {
-		toggleRoomEdit(target, event);
-		return;
-	}
-	if (target.matches("[data-action='make-double']")) {
-		makeDoublePeriod(target);
-		return;
+
+	if (target.matches("[data-action='toggle-double']")) {
+		toggleDoublePeriod(target);
 	}
 }
 
@@ -271,8 +197,8 @@ function renderAdminPage() {
 }
 
 function renderPublicScheduleTable(schedule) {
-	const tableHtml = `
-		<table class="schedule-table public-table">
+	return `
+		<table class="schedule-table">
 			<thead>
 				<tr>
 					<th class="period-col">Period</th>
@@ -282,45 +208,50 @@ function renderPublicScheduleTable(schedule) {
 			</thead>
 			<tbody>
 				${schedule.periods.map((period, idx) => {
-					const xDouble = Number(period.x.length) === 2;
-					const yDouble = Number(period.y.length) === 2;
+					const prev = idx > 0 ? schedule.periods[idx - 1] : null;
+					const xDoubleCont = prev && Number(prev.x.length) === 2;
+					const yDoubleCont = prev && Number(prev.y.length) === 2;
 					
-					// Skip if this period is part of a double (but not the first)
-					if (idx > 0 && (Number(schedule.periods[idx - 1].x.length) === 2 || Number(schedule.periods[idx - 1].y.length) === 2)) {
-						return '';
-					}
-					
+					// Determine if we should skip rendering a cell because of a double from above
+					// But we still need the row if either column is NOT covered.
+					if (xDoubleCont && yDoubleCont) return '';
+
 					return `
-						<tr class="period-row ${xDouble || yDouble ? 'has-double' : ''}">
+						<tr class="period-row">
 							<td class="period-col">
 								<span class="period-label">Period ${period.period}</span>
-								${xDouble || yDouble ? '<span class="double-indicator">(double)</span>' : ''}
 							</td>
-							<td class="block-col block-x" ${xDouble ? 'rowspan="2"' : ''}>
-								<div class="table-block">
-									<div class="course-name">${escapeHtml(period.x.course)}</div>
-									<div class="teacher-name">${escapeHtml(period.x.teacher)}</div>
-									<div class="room-number">Room ${escapeHtml(period.x.room)}</div>
-								</div>
-							</td>
-							<td class="block-col block-y" ${yDouble ? 'rowspan="2"' : ''}>
-								<div class="table-block">
-									<div class="course-name">${escapeHtml(period.y.course)}</div>
-									<div class="teacher-name">${escapeHtml(period.y.teacher)}</div>
-									<div class="room-number">Room ${escapeHtml(period.y.room)}</div>
-								</div>
-							</td>
+							${xDoubleCont ? '' : `
+								<td class="block-col block-x" ${Number(period.x.length) === 2 ? 'rowspan="2"' : ''}>
+									<div class="table-block">
+										<div class="course-name">${escapeHtml(period.x.course)}</div>
+										<div class="teacher-name">${escapeHtml(period.x.teacher)}</div>
+										<div class="room-number">Room ${escapeHtml(period.x.room)}</div>
+										${Number(period.x.length) === 2 ? '<span class="double-badge">Double Period</span>' : ''}
+									</div>
+								</td>
+							`}
+							${yDoubleCont ? '' : `
+								<td class="block-col block-y" ${Number(period.y.length) === 2 ? 'rowspan="2"' : ''}>
+									<div class="table-block">
+										<div class="course-name">${escapeHtml(period.y.course)}</div>
+										<div class="teacher-name">${escapeHtml(period.y.teacher)}</div>
+										<div class="room-number">Room ${escapeHtml(period.y.room)}</div>
+										${Number(period.y.length) === 2 ? '<span class="double-badge">Double Period</span>' : ''}
+									</div>
+								</td>
+							`}
 						</tr>
 					`;
-				}).filter(row => row).join('')}
+				}).filter(r => r).join('')}
 			</tbody>
 		</table>
 	`;
-	return tableHtml;
 }
 
 function renderAdminScheduleTable(schedule) {
-	const tableHtml = `
+	// In admin view, we always show all 4 periods to avoid "missing period 4" confusion
+	return `
 		<table class="schedule-table admin-table">
 			<thead>
 				<tr>
@@ -330,50 +261,47 @@ function renderAdminScheduleTable(schedule) {
 				</tr>
 			</thead>
 			<tbody>
-				${schedule.periods.map((period, idx) => {
-					const xDouble = Number(period.x.length) === 2;
-					const yDouble = Number(period.y.length) === 2;
-					
-					// Skip if this period is part of a double (but not the first)
-					if (idx > 0 && (Number(schedule.periods[idx - 1].x.length) === 2 || Number(schedule.periods[idx - 1].y.length) === 2)) {
-						return '';
-					}
-					
-					return `
-						<tr class="period-row ${xDouble || yDouble ? 'has-double' : ''}" data-period="${period.period}">
-							<td class="period-col">
-								<span class="period-label">Period ${period.period}</span>
-								${xDouble || yDouble ? '<span class="double-indicator">(double)</span>' : ''}
-							</td>
-							<td class="block-col block-x" ${xDouble ? 'rowspan="2"' : ''} data-period="${period.period}" data-block="x" data-period-index="${idx}">
-								${renderAdminBlockCell(period, 'x', idx, schedule)}
-							</td>
-							<td class="block-col block-y" ${yDouble ? 'rowspan="2"' : ''} data-period="${period.period}" data-block="y" data-period-index="${idx}">
-								${renderAdminBlockCell(period, 'y', idx, schedule)}
-							</td>
-						</tr>
-					`;
-				}).filter(row => row).join('')}
+				${schedule.periods.map((period, idx) => `
+					<tr class="period-row" data-period-index="${idx}">
+						<td class="period-col">
+							<span class="period-label">Period ${period.period}</span>
+						</td>
+						<td class="block-col block-x" data-block="x" data-period-index="${idx}">
+							${renderAdminBlockCell(period, 'x', idx)}
+						</td>
+						<td class="block-col block-y" data-block="y" data-period-index="${idx}">
+							${renderAdminBlockCell(period, 'y', idx)}
+						</td>
+					</tr>
+				`).join('')}
 			</tbody>
 		</table>
 	`;
-	return tableHtml;
 }
 
-function renderAdminBlockCell(period, blockKey, periodIndex, schedule) {
-	const block = period[blockKey];
-	const courseOptions = COURSES.map((course) => `<option value="${course}" ${course === block.course ? 'selected' : ''}>${course}</option>`).join('');
+function renderAdminBlockCell(period, key, idx) {
+	const block = period[key];
+	const isDouble = Number(block.length) === 2;
+	const isLastPeriod = idx === state.schedule.periods.length - 1;
 	
 	return `
-		<div class="admin-block-cell" draggable="false" data-period-index="${periodIndex}" data-block-key="${blockKey}">
+		<div class="admin-block-cell" data-period-index="${idx}" data-block-key="${key}">
 			<div class="cell-display">
 				<div class="course-name">${escapeHtml(block.course)}</div>
 				<div class="teacher-name">${escapeHtml(block.teacher)}</div>
-				<div class="room-number" title="Click to edit">
-					<span class="room-value">Room ${escapeHtml(block.room)}</span>
-					<input type="text" class="room-input hidden" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${periodIndex}" data-block-key="${blockKey}">
+				<div class="room-number" title="Click to edit room">
+					<input type="text" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}">
 				</div>
-				${Number(block.length) === 2 ? '<span class="double-badge">(double)</span>' : ''}
+				<div class="block-actions">
+					${!isLastPeriod ? `
+						<button class="toggle-double-btn ${isDouble ? 'active' : ''}"
+							data-action="toggle-double"
+							data-period-index="${idx}"
+							data-block-key="${key}">
+							${isDouble ? 'Double' : 'Single'}
+						</button>
+					` : ''}
+				</div>
 			</div>
 		</div>
 	`;
@@ -392,399 +320,227 @@ function renderClassCards() {
 function setupDragAndDrop() {
 	const adminSchedule = document.getElementById('adminSchedule');
 	const adminClassCards = document.getElementById('adminClassCards');
-	
 	if (!adminSchedule || !adminClassCards) return;
 
-	// Setup dragging from class cards
-	const classCards = adminClassCards.querySelectorAll('.draggable-card');
-	classCards.forEach((card) => {
-		card.addEventListener('dragstart', handleClassCardDragStart);
-		card.addEventListener('dragend', handleClassCardDragEnd);
+	adminClassCards.querySelectorAll('.draggable-card').forEach(card => {
+		card.addEventListener('dragstart', e => {
+			e.dataTransfer.setData('application/json', JSON.stringify({ course: card.dataset.course }));
+			card.classList.add('dragging');
+		});
+		card.addEventListener('dragend', () => card.classList.remove('dragging'));
 	});
 
-	// Setup drop zones on table cells
-	const tableCells = adminSchedule.querySelectorAll('.block-col');
-	tableCells.forEach((cell) => {
-		cell.addEventListener('dragover', handleDragOver);
-		cell.addEventListener('drop', handleDropFromClassCard);
-		cell.addEventListener('dragleave', handleDragLeave);
-	});
-	
-	// Setup room number click handlers
-	const roomNumbers = adminSchedule.querySelectorAll('.room-number');
-	roomNumbers.forEach((room) => {
-		room.addEventListener('click', toggleRoomEditMode);
-	});
-}
-
-function handleClassCardDragStart(event) {
-	const card = event.currentTarget;
-	const course = card.dataset.course;
-	
-	event.dataTransfer.effectAllowed = 'copy';
-	event.dataTransfer.setData('application/json', JSON.stringify({
-		type: 'classCard',
-		course,
-	}));
-	
-	card.classList.add('dragging');
-}
-
-function handleClassCardDragEnd(event) {
-	event.currentTarget.classList.remove('dragging');
-	document.querySelectorAll('.block-col').forEach((col) => {
-		col.classList.remove('drag-over');
+	adminSchedule.querySelectorAll('.block-col').forEach(cell => {
+		cell.addEventListener('dragover', e => {
+			e.preventDefault();
+			cell.classList.add('drag-over');
+		});
+		cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
+		cell.addEventListener('drop', e => {
+			e.preventDefault();
+			cell.classList.remove('drag-over');
+			try {
+				const data = JSON.parse(e.dataTransfer.getData('application/json'));
+				const { periodIndex, block } = cell.dataset;
+				const schedule = state.schedule;
+				const targetBlock = schedule.periods[Number(periodIndex)][block];
+				targetBlock.course = data.course;
+				applyCourseDefaults(targetBlock, data.course);
+				saveSchedule(schedule);
+				renderAdminPage();
+			} catch (err) {}
+		});
 	});
 }
 
-function handleDragOver(event) {
-	event.preventDefault();
-	event.dataTransfer.dropEffect = 'copy';
-	event.currentTarget.classList.add('drag-over');
-}
-
-function handleDragLeave(event) {
-	if (event.currentTarget === event.target) {
-		event.currentTarget.classList.remove('drag-over');
-	}
-}
-
-function handleDropFromClassCard(event) {
-	event.preventDefault();
-	event.currentTarget.classList.remove('drag-over');
-	
-	try {
-		const data = JSON.parse(event.dataTransfer.getData('application/json'));
-		if (data.type !== 'classCard') return;
-		
-		const course = data.course;
-		const targetCell = event.currentTarget;
-		const periodIndex = Number(targetCell.dataset.periodIndex);
-		const blockKey = targetCell.dataset.block;
-		
-		if (isNaN(periodIndex) || !blockKey) return;
-		
-		const schedule = state.schedule;
-		const period = schedule.periods[periodIndex];
-		
-		if (!period) return;
-		
-		// Assign the course to the cell
-		const block = period[blockKey];
-		block.course = course;
-		applyCourseDefaults(block, course);
-		
-		saveSchedule(schedule);
-		renderAdminPage();
-	} catch (err) {
-		console.error('Drop error:', err);
-	}
-}
-
-function toggleRoomEditMode(event) {
-	const roomNumberDiv = event.currentTarget;
-	const roomValue = roomNumberDiv.querySelector('.room-value');
-	const roomInput = roomNumberDiv.querySelector('.room-input');
-	
-	if (roomValue.classList.contains('hidden')) {
-		// Currently in edit mode, save and exit
-		const periodIndex = Number(roomInput.dataset.periodIndex);
-		const blockKey = roomInput.dataset.blockKey;
-		const newRoom = roomInput.value.trim();
-		
-		if (newRoom && !isNaN(periodIndex) && blockKey) {
-			const period = state.schedule.periods[periodIndex];
-			if (period) {
-				period[blockKey].room = newRoom;
-				saveSchedule(state.schedule);
-				updateSaveStatus();
-			}
-		}
-		
-		roomValue.classList.remove('hidden');
-		roomInput.classList.add('hidden');
-	} else {
-		// Switch to edit mode
-		const periodIndex = Number(roomInput.dataset.periodIndex);
-		const blockKey = roomInput.dataset.blockKey;
-		const period = state.schedule.periods[periodIndex];
-		
-		if (period) {
-			roomInput.value = period[blockKey].room;
-			roomValue.classList.add('hidden');
-			roomInput.classList.remove('hidden');
-			roomInput.focus();
-			roomInput.select();
-		}
-	}
-}
-
-function makeDoublePeriod(button) {
-	const periodIndex = Number(button.dataset.periodIndex);
-	const blockKey = button.dataset.blockKey;
-	
-	if (isNaN(periodIndex) || !blockKey || periodIndex >= state.schedule.periods.length - 1) return;
-	
+function toggleDoublePeriod(button) {
+	const idx = Number(button.dataset.periodIndex);
+	const key = button.dataset.blockKey;
 	const schedule = state.schedule;
-	schedule.periods[periodIndex][blockKey].length = 2;
+	const block = schedule.periods[idx][key];
 	
+	block.length = Number(block.length) === 2 ? 1 : 2;
 	saveSchedule(schedule);
 	renderAdminPage();
 }
 
 function renderEventsEditor(schedule) {
-	if (!schedule.events.length) {
-		return '<p class="muted-copy">No special events yet.</p>';
-	}
+	if (!schedule.events.length) return '<p class="muted-copy">No special events.</p>';
 
 	return schedule.events.map((item, index) => {
-		const periodOptions = ['all', ...PERIOD_OPTIONS].map((option) => {
-			const value = option === 'all' ? 'all' : String(option);
-			const label = option === 'all' ? 'All day' : `Period ${option}`;
-			const selected = item.period === 'all' ? value === 'all' : Number(item.period) === option;
-			return `<option value="${value}" ${selected ? 'selected' : ''}>${label}</option>`;
+		const periodOptions = ['all', 1, 2, 3, 4].map(v => {
+			const label = v === 'all' ? 'All day' : `Period ${v}`;
+			const selected = item.period === v || (v === 'all' && item.period === 'all');
+			return `<option value="${v}" ${selected ? 'selected' : ''}>${label}</option>`;
 		}).join('');
-		const hasDescription = item.description && item.description.trim().length > 0;
-		const descriptionHidden = !hasDescription;
+
+		const hasDesc = item.description && item.description.trim().length > 0;
 
 		return `
-			<div class="event-row">
-				<label class="field">
+			<div class="event-row" data-event-index="${index}">
+				<div class="field">
 					<span>When</span>
 					<select data-event-field="period" data-event-index="${index}">${periodOptions}</select>
-				</label>
-				<label class="field">
+				</div>
+				<div class="field">
 					<span>Title</span>
 					<input data-event-field="title" data-event-index="${index}" type="text" value="${escapeAttribute(item.title)}">
-				</label>
-				<label class="field">
+				</div>
+				<div class="field">
 					<span>Note</span>
 					<input data-event-field="note" data-event-index="${index}" type="text" value="${escapeAttribute(item.note || '')}">
-				</label>
-				<div class="event-actions">
-					<button class="ghost-btn small-btn" data-action="toggle-description" data-event-index="${index}" type="button">${descriptionHidden ? 'Add description' : 'Hide description'}</button>
-					<button class="ghost-btn small-btn" data-action="delete-event" data-event-index="${index}" type="button">Remove</button>
 				</div>
-				<label class="field full-span ${descriptionHidden ? 'hidden' : ''}">
-					<span>Description (optional)</span>
-					<textarea data-event-field="description" data-event-index="${index}" rows="2" placeholder="Add more details about this event...">${escapeAttribute(item.description || '')}</textarea>
-				</label>
+				<div class="desc-container ${hasDesc ? '' : 'hidden'}" data-event-index="${index}">
+					<div class="field event-description-field">
+						<span>Description</span>
+						<textarea data-event-field="description" data-event-index="${index}" rows="2">${escapeAttribute(item.description || '')}</textarea>
+					</div>
+				</div>
+				<div class="event-actions">
+					<button class="ghost-btn small-btn" data-action="toggle-description" data-event-index="${index}">${hasDesc ? 'Hide description' : 'Add description'}</button>
+					<button class="ghost-btn small-btn" data-action="delete-event" data-event-index="${index}">Remove</button>
+				</div>
 			</div>
 		`;
 	}).join('');
 }
 
 function renderEventFeed(schedule) {
-	if (!schedule.events.length) {
-		return '<p class="muted-copy">No special events.</p>';
-	}
-
-	return schedule.events.map((item) => {
-		const when = item.period === 'all' ? 'All day' : `Period ${item.period}`;
-		return `
-			<article class="event-card">
-				<div class="inline-line">
-					<span class="event-chip"><small>${escapeHtml(when)}</small></span>
-					<span class="tag">Special event</span>
-				</div>
-				<div class="event-title">${escapeHtml(item.title)}</div>
-				${item.note ? `<div class="event-note">${escapeHtml(item.note)}</div>` : ''}
-				${item.description ? `<div class="event-description">${escapeHtml(item.description)}</div>` : ''}
-			</article>
-		`;
-	}).join('');
+	if (!schedule.events.length) return '<p class="muted-copy">No special events.</p>';
+	return schedule.events.map(item => `
+		<article class="event-card">
+			<div class="inline-line">
+				<span class="event-chip"><small>${item.period === 'all' ? 'All day' : `Period ${item.period}`}</small></span>
+				<span class="tag">Special event</span>
+			</div>
+			<div class="event-title">${escapeHtml(item.title)}</div>
+			${item.note ? `<div class="event-note">${escapeHtml(item.note)}</div>` : ''}
+			${item.description ? `<div class="event-description">${escapeHtml(item.description)}</div>` : ''}
+		</article>
+	`).join('');
 }
 
 function loadSchedule() {
+	const raw = localStorage.getItem(STORAGE_KEY);
+	if (!raw) return saveSchedule(DEFAULT_SCHEDULE);
 	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
-		if (!raw) {
-			const fresh = clone(DEFAULT_SCHEDULE);
-			saveSchedule(fresh);
-			return fresh;
-		}
-
-		const parsed = JSON.parse(raw);
-		const normalized = ensureScheduleShape(parsed);
-		saveSchedule(normalized);
-		return normalized;
-	} catch (err) {
-		console.error('Error loading schedule:', err);
-		const fresh = clone(DEFAULT_SCHEDULE);
-		saveSchedule(fresh);
-		return fresh;
+		return ensureScheduleShape(JSON.parse(raw));
+	} catch (e) {
+		return saveSchedule(DEFAULT_SCHEDULE);
 	}
 }
 
-function ensureScheduleShape(schedule) {
-	if (!schedule || !Array.isArray(schedule.periods) || schedule.periods.length !== 4) {
-		return clone(DEFAULT_SCHEDULE);
+function ensureScheduleShape(s) {
+	if (!s || !Array.isArray(s.periods)) return DEFAULT_SCHEDULE;
+	while (s.periods.length < 4) {
+		const nextP = s.periods.length + 1;
+		s.periods.push(createPeriod(nextP, createBlock("Bio"), createBlock("CS")));
 	}
-
-	const normalized = {
-		periods: schedule.periods.map((period, idx) => ({
-			period: PERIODS[idx] || (idx + 1),
-			x: normalizeBlock(period.x, DEFAULT_SCHEDULE.periods[idx].x),
-			y: normalizeBlock(period.y, DEFAULT_SCHEDULE.periods[idx].y),
-		})),
-		events: Array.isArray(schedule.events) ? schedule.events.map((item) => ({
-			period: item.period === 'all' ? 'all' : Number(item.period) || 'all',
-			title: item.title || '',
-			note: item.note || '',
-			description: item.description || '',
-		})) : clone(DEFAULT_SCHEDULE.events),
-	};
-	
-	return normalized;
+	s.periods = s.periods.slice(0, 4).map((p, i) => ({
+		period: i + 1,
+		x: normalizeBlock(p.x),
+		y: normalizeBlock(p.y)
+	}));
+	if (!Array.isArray(s.events)) s.events = [];
+	return s;
 }
 
-function normalizeBlock(block, fallback) {
-	if (!block || typeof block !== 'object') {
-		return clone(fallback);
-	}
-	
-	const course = COURSES.includes(block.course) ? block.course : (fallback?.course || 'Bio');
-	const courseDefaults = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
+function normalizeBlock(b) {
+	const defaults = COURSE_LIBRARY[b?.course] || COURSE_LIBRARY.Bio;
 	return {
-		course,
-		teacher: block.teacher || courseDefaults.teacher,
-		room: block.room || courseDefaults.room,
-		length: Number(block.length) === 2 ? 2 : 1,
-		note: block.note || '',
+		course: b?.course || "Bio",
+		teacher: b?.teacher || defaults.teacher,
+		room: b?.room || defaults.room,
+		length: Number(b?.length) === 2 ? 2 : 1,
+		note: b?.note || ""
 	};
 }
 
-function saveSchedule(schedule) {
-	const normalized = ensureScheduleShape(schedule);
-	state.schedule = normalized;
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+function saveSchedule(s) {
+	state.schedule = s;
+	localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+	return s;
 }
 
 function setupSettingsMenu() {
-	const settingsBtn = document.getElementById('settingsButton');
-	const settingsMenu = document.getElementById('settingsMenu');
-	const darkModeToggle = document.getElementById('darkModeToggle');
-	const lightModeToggle = document.getElementById('lightModeToggle');
+	const btn = document.getElementById('settingsButton');
+	const menu = document.getElementById('settingsMenu');
+	if (!btn || !menu) return;
 
-	if (!settingsBtn) return;
-
-	settingsBtn.addEventListener('click', (e) => {
+	btn.addEventListener('click', (e) => {
 		e.stopPropagation();
-		if (settingsMenu) {
-			settingsMenu.classList.toggle('hidden');
-		}
+		menu.classList.toggle('hidden');
 	});
 
-	if (darkModeToggle) {
-		darkModeToggle.addEventListener('click', () => {
-			setDarkMode(true);
-			if (settingsMenu) settingsMenu.classList.add('hidden');
-		});
-	}
-
-	if (lightModeToggle) {
-		lightModeToggle.addEventListener('click', () => {
-			setDarkMode(false);
-			if (settingsMenu) settingsMenu.classList.add('hidden');
-		});
-	}
+	document.getElementById('darkModeToggle')?.addEventListener('click', () => setDarkMode(true));
+	document.getElementById('lightModeToggle')?.addEventListener('click', () => setDarkMode(false));
 
 	document.addEventListener('click', (e) => {
-		if (settingsMenu && !settingsMenu.contains(e.target) && e.target !== settingsBtn) {
-			settingsMenu.classList.add('hidden');
-		}
+		if (!menu.contains(e.target) && e.target !== btn) menu.classList.add('hidden');
 	});
 }
 
 function setDarkMode(isDark) {
-	state.darkMode = isDark;
-	localStorage.setItem('smcs-schedule-dark-mode', isDark ? 'true' : 'false');
-	
-	if (isDark) {
-		document.documentElement.style.colorScheme = 'dark';
-		document.body.classList.remove('light-mode');
-		document.body.classList.add('dark-mode');
-	} else {
-		document.documentElement.style.colorScheme = 'light';
-		document.body.classList.remove('dark-mode');
-		document.body.classList.add('light-mode');
-	}
+	localStorage.setItem('smcs-schedule-dark-mode', isDark);
+	document.body.classList.toggle('dark-mode', isDark);
+	document.body.classList.toggle('light-mode', !isDark);
+	document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+	document.getElementById('settingsMenu')?.classList.add('hidden');
 }
 
 function loadDarkModePreference() {
 	const saved = localStorage.getItem('smcs-schedule-dark-mode');
-	const isDark = saved === null ? true : saved === 'true';
-	setDarkMode(isDark);
-}
-
-function periodHasDouble(period) {
-	return Number(period.x.length) === 2 || Number(period.y.length) === 2;
+	setDarkMode(saved === null ? true : saved === 'true');
 }
 
 function applyCourseDefaults(block, course) {
-	const defaults = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
-	block.teacher = defaults.teacher;
-	block.room = defaults.room;
-}
-
-function updateSaveStatus(message = 'Saved to this browser') {
-	const status = document.getElementById('saveStatus');
-	if (status) {
-		status.textContent = message;
+	const d = COURSE_LIBRARY[course];
+	if (d) {
+		block.teacher = d.teacher;
+		block.room = d.room;
 	}
 }
 
-function isAuthenticated() {
-	return localStorage.getItem(AUTH_KEY) === 'ok';
+function updateSaveStatus() {
+	const status = document.getElementById('saveStatus');
+	if (status) status.textContent = 'Saved to browser';
 }
+
+function isAuthenticated() { return localStorage.getItem(AUTH_KEY) === 'ok'; }
 
 function resetSampleSchedule() {
-	if (!window.confirm('Reset the schedule to the default?')) {
-		return;
+	if (confirm('Reset to default?')) {
+		saveSchedule(DEFAULT_SCHEDULE);
+		renderAdminPage();
 	}
-	const fresh = clone(DEFAULT_SCHEDULE);
-	saveSchedule(fresh);
-	renderAdminPage();
 }
 
 function exportSchedule() {
 	const blob = new Blob([JSON.stringify(state.schedule, null, 2)], { type: 'application/json' });
 	const url = URL.createObjectURL(blob);
-	const link = document.createElement('a');
-	link.href = url;
-	link.download = 'smcs-schedule.json';
-	link.click();
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = 'schedule.json';
+	a.click();
 	URL.revokeObjectURL(url);
-	updateSaveStatus('Exported schedule JSON');
 }
 
 function addEventRow() {
-	const schedule = state.schedule;
-	schedule.events.push({ period: 'all', title: '', note: '', description: '' });
-	saveSchedule(schedule);
+	state.schedule.events.push({ period: 'all', title: '', note: '', description: '' });
+	saveSchedule(state.schedule);
 	renderAdminPage();
 }
 
-function deleteEventRow(index) {
-	const schedule = state.schedule;
-	schedule.events.splice(index, 1);
-	saveSchedule(schedule);
+function deleteEventRow(idx) {
+	state.schedule.events.splice(idx, 1);
+	saveSchedule(state.schedule);
 	renderAdminPage();
 }
 
-function clone(value) {
-	return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+function escapeHtml(s) {
+	return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m]));
 }
 
-function escapeHtml(value) {
-	return String(value)
-		.replaceAll('&', '&amp;')
-		.replaceAll('<', '&lt;')
-		.replaceAll('>', '&gt;')
-		.replaceAll('"', '&quot;')
-		.replaceAll("'", '&#39;');
-}
-
-function escapeAttribute(value) {
-	return escapeHtml(value).replaceAll('`', '&#96;');
+function escapeAttribute(s) {
+	return escapeHtml(s).replace(/`/g, '&#96;');
 }
