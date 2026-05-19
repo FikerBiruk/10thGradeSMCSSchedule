@@ -88,6 +88,8 @@ a {
 	align-items: flex-end;
 	justify-content: space-between;
 	gap: 20px;
+	position: relative; /* Ensure stacking context */
+	z-index: 100;       /* Higher than grid content */
 }
 
 .hero-copy {
@@ -123,7 +125,7 @@ a {
 	gap: 12px;
 	flex-wrap: wrap;
 	position: relative;
-	z-index: 100;
+	z-index: 101; /* Above hero-copy if they overlap */
 }
 
 .public-grid,
@@ -131,6 +133,8 @@ a {
 	display: grid;
 	grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
 	gap: 20px;
+	position: relative;
+	z-index: 1; /* Below hero */
 }
 
 .main-panel,
@@ -428,7 +432,7 @@ a {
 	border: 1px solid var(--line);
 	border-radius: 20px;
 	box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
-	z-index: 1000;
+	z-index: 2000; /* Extremely high to stay on top */
 	min-width: 220px;
 	overflow: hidden;
 	animation: popIn 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
