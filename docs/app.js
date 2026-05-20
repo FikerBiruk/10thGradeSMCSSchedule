@@ -81,12 +81,17 @@ function applyAutoMerge(schedule) {
 		if (!next) return;
 
 		['x', 'y'].forEach(key => {
-			if (p[key].course !== "None" && p[key].course === next[key].course) {
-				p[key].length = 2;
-				// When merging, we keep the data of the first block
-			} else if (p[key].length === 2 && p[key].course !== next[key].course) {
-				// If they don't match anymore, break the double
-				p[key].length = 1;
+			const b1 = p[key];
+			const b2 = next[key];
+			if (b1.course && b1.course !== "None" && b1.course === b2.course) {
+				b1.length = 2;
+				b2.teacher = b1.teacher;
+				b2.room = b1.room;
+				b2.length = 1;
+			} else if (Number(b1.length) === 2) {
+				if (b1.course !== b2.course) {
+					b1.length = 1;
+				}
 			}
 		});
 	});
@@ -185,14 +190,19 @@ function handleAdminClick(event) {
 		const idx = Number(target.dataset.periodIndex);
 		const key = target.dataset.blockKey;
 		const schedule = state.schedule;
-		const isNowDouble = Number(schedule.periods[idx][key].length) === 1;
+		const block = schedule.periods[idx][key];
+		const isNowDouble = Number(block.length) === 1;
 		if (isNowDouble) {
-			schedule.periods[idx][key].length = 2;
+			block.length = 2;
 			if (schedule.periods[idx + 1]) {
-				schedule.periods[idx + 1][key].length = 1;
+				const next = schedule.periods[idx + 1][key];
+				next.course = block.course;
+				next.teacher = block.teacher;
+				next.room = block.room;
+				next.length = 1;
 			}
 		} else {
-			schedule.periods[idx][key].length = 1;
+			block.length = 1;
 		}
 		saveSchedule(schedule);
 	}
@@ -243,38 +253,35 @@ function renderPublicTable(schedule) {
 }
 
 function renderAdminTable(schedule) {
-	return `<table class="schedule-table admin-table">
-		<thead><tr><th class="period-col">Period</th><th class="block-col">Block X</th><th class="block-col">Block Y</th></tr></thead>
-		<tbody>
-			${schedule.periods.map((p, idx) => {
-				const prev = idx > 0 ? schedule.periods[idx - 1] : null;
-				const coveredX = prev && Number(prev.x.length) === 2;
-				const coveredY = prev && Number(prev.y.length) === 2;
-				return `
-				<tr>
-					<td class="period-col"><span class="period-label">Period ${p.period}</span></td>
-					<td class="block-col block-x" data-block="x" data-period-index="${idx}">
-						${coveredX ? `<div class="covered-block">Merged with Period ${idx}</div>` : renderAdminBlock(p.x, 'x', idx)}
-					</td>
-					<td class="block-col block-y" data-block="y" data-period-index="${idx}">
-						${coveredY ? `<div class="covered-block">Merged with Period ${idx}</div>` : renderAdminBlock(p.y, 'y', idx)}
-					</td>
-				</tr>`;
-			}).join('')}
-		</tbody>
-	</table>`;
+	let html = `<table class="schedule-table admin-table"><thead><tr><th class="period-col">Period</th><th class="block-col">Block X</th><th class="block-col">Block Y</th></tr></thead><tbody>`;
+	schedule.periods.forEach((p, idx) => {
+		const prev = idx > 0 ? schedule.periods[idx - 1] : null;
+		const skipX = prev && Number(prev.x.length) === 2;
+		const skipY = prev && Number(prev.y.length) === 2;
+		html += `<tr>
+			<td class="period-col"><span class="period-label">Period ${p.period}</span></td>
+			${skipX ? '' : `<td class="block-col block-x" data-block="x" data-period-index="${idx}" ${Number(p.x.length) === 2 ? 'rowspan="2"' : ''}>
+				${renderAdminBlock(p.x, 'x', idx)}
+			</td>`}
+			${skipY ? '' : `<td class="block-col block-y" data-block="y" data-period-index="${idx}" ${Number(p.y.length) === 2 ? 'rowspan="2"' : ''}>
+				${renderAdminBlock(p.y, 'y', idx)}
+			</td>`}
+		</tr>`;
+	});
+	return html + `</tbody></table>`;
 }
 
 function renderAdminBlock(block, key, idx) {
 	const isDouble = Number(block.length) === 2;
 	const canDouble = idx < 3;
-	return `<div class="admin-block-cell">
+	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''}">
 		<div class="course-name">${escapeHtml(block.course)}</div>
 		<div class="teacher-name">${escapeHtml(block.teacher)}</div>
 		<input type="text" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}">
 		<div class="block-actions">
-			${canDouble ? `<button class="toggle-double-btn ${isDouble ? 'active' : ''}" data-action="toggle-double" data-period-index="${idx}" data-block-key="${key}">${isDouble ? 'Double ON' : 'Make Double'}</button>` : ''}
+			${canDouble ? `<button class="toggle-double-btn ${isDouble ? 'active' : ''}" data-action="toggle-double" data-period-index="${idx}" data-block-key="${key}">${isDouble ? 'Double Period ON' : 'Make Double'}</button>` : ''}
 		</div>
+		${isDouble ? '<div class="double-badge">Double Period</div>' : ''}
 	</div>`;
 }
 

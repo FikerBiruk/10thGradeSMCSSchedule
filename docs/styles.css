@@ -440,8 +440,15 @@ a {
 }
 
 .admin-block-cell {
-	display: grid;
+	display: flex;
+	flex-direction: column;
 	gap: 12px;
+	height: 100%;
+}
+
+.admin-block-cell.is-double {
+	justify-content: center;
+	padding: 20px 0;
 }
 
 .room-input {

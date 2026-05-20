@@ -199,26 +199,33 @@ h1, h2, p {
 	cursor: grab;
 	display: flex;
 	flex-direction: column;
-	justify-content: space-between;
+	justify-content: center;
 	height: 100%;
+	transition: all 0.2s ease;
+}
+
+.block-card:hover {
+	transform: scale(1.02);
+	border-color: var(--accent);
 }
 
 .block-card.double-period {
-	background: linear-gradient(135deg, rgba(255, 193, 92, 0.2), rgba(255, 193, 92, 0.1));
-	border-color: rgba(255, 193, 92, 0.4);
+	background: linear-gradient(135deg, rgba(255, 193, 92, 0.25), rgba(255, 193, 92, 0.15));
+	border-color: rgba(255, 193, 92, 0.5);
 }
 
-.cell-label {
-	font-size: 0.8rem;
-	color: var(--muted);
-}
-
-.block-card {
-	border-radius: 14px;
-	padding: 12px;
-	background: linear-gradient(180deg, rgba(69, 194, 177, 0.15), rgba(69, 194, 177, 0.08));
-	border: 1px solid rgba(69, 194, 177, 0.28);
-	cursor: grab;
+.double-badge {
+	display: inline-block;
+	background: linear-gradient(135deg, #ffcb6b, #ff9f43);
+	color: #000;
+	font-size: 0.7rem;
+	font-weight: 900;
+	padding: 4px 10px;
+	border-radius: 8px;
+	margin-top: 8px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	width: fit-content;
 }
 
 .block-top {

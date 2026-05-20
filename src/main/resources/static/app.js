@@ -75,6 +75,7 @@ async function setupAdminPage() {
 
 	try {
 		await loadSchedule();
+		document.getElementById("adminShell").hidden = false;
 	} catch (error) {
 		if (String(error.message).includes("401")) {
 			authorizeFailure();
