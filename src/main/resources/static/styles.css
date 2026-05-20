@@ -164,30 +164,48 @@ h1, h2, p {
 
 .schedule-grid {
 	display: grid;
-	grid-template-columns: repeat(5, minmax(0, 1fr));
+	grid-template-columns: 100px repeat(5, minmax(0, 1fr));
+	grid-template-rows: auto repeat(4, minmax(118px, auto));
 	gap: 12px;
 }
 
-.grid-column {
-	display: grid;
-	gap: 12px;
-}
-
-.grid-head {
-	padding: 14px;
-	font-weight: 700;
-	text-align: center;
-	border-radius: 14px;
-	background: rgba(255, 255, 255, 0.06);
+.grid-cell-label {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255, 255, 255, 0.02);
 	border: 1px solid var(--line);
+	border-radius: 14px;
+	font-weight: 800;
+	color: var(--accent);
+	font-size: 1.1rem;
 }
 
 .grid-cell {
 	min-height: 118px;
 	padding: 12px;
 	border-radius: 16px;
-	display: grid;
-	gap: 10px;
+	background: var(--panel);
+	border: 1px solid var(--line);
+	box-shadow: var(--shadow);
+	backdrop-filter: blur(12px);
+}
+
+.block-card {
+	border-radius: 14px;
+	padding: 16px;
+	background: linear-gradient(135deg, rgba(69, 194, 177, 0.2), rgba(69, 194, 177, 0.1));
+	border: 1px solid rgba(69, 194, 177, 0.4);
+	cursor: grab;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	height: 100%;
+}
+
+.block-card.double-period {
+	background: linear-gradient(135deg, rgba(255, 193, 92, 0.2), rgba(255, 193, 92, 0.1));
+	border-color: rgba(255, 193, 92, 0.4);
 }
 
 .cell-label {

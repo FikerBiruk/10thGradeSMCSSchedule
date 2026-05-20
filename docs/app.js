@@ -69,9 +69,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function saveSchedule(s) {
 	const n = ensureScheduleShape(s);
+	applyAutoMerge(n);
 	state.schedule = n;
 	db.ref('schedule').set(n);
 	return n;
+}
+
+function applyAutoMerge(schedule) {
+	schedule.periods.forEach((p, idx) => {
+		const next = schedule.periods[idx + 1];
+		if (!next) return;
+
+		['x', 'y'].forEach(key => {
+			if (p[key].course !== "None" && p[key].course === next[key].course) {
+				p[key].length = 2;
+				// When merging, we keep the data of the first block
+			} else if (p[key].length === 2 && p[key].course !== next[key].course) {
+				// If they don't match anymore, break the double
+				p[key].length = 1;
+			}
+		});
+	});
 }
 
 function initPublicPage() {
@@ -208,7 +226,7 @@ function renderPublicTable(schedule) {
 					<div class="course-name">${escapeHtml(p.x.course)}</div>
 					<div class="teacher-name">${escapeHtml(p.x.teacher)}</div>
 					<div class="room-number">Room ${escapeHtml(p.x.room)}</div>
-					${Number(p.x.length) === 2 ? '<span class="double-badge">Double</span>' : ''}
+					${Number(p.x.length) === 2 ? '<div class="double-badge">Double Period</div>' : ''}
 				</div>
 			</td>`}
 			${skipY ? '' : `<td class="block-col block-y" ${Number(p.y.length) === 2 ? 'rowspan="2"' : ''}>
@@ -216,7 +234,7 @@ function renderPublicTable(schedule) {
 					<div class="course-name">${escapeHtml(p.y.course)}</div>
 					<div class="teacher-name">${escapeHtml(p.y.teacher)}</div>
 					<div class="room-number">Room ${escapeHtml(p.y.room)}</div>
-					${Number(p.y.length) === 2 ? '<span class="double-badge">Double</span>' : ''}
+					${Number(p.y.length) === 2 ? '<div class="double-badge">Double Period</div>' : ''}
 				</div>
 			</td>`}
 		</tr>`;
@@ -315,8 +333,17 @@ function renderEventsEditor(schedule) {
 }
 
 function renderEventFeed(schedule) {
-	if (!schedule.events.length) return '<p class="muted-copy">No special events.</p>';
-	return schedule.events.map(ev => `<article class="event-card"><div class="inline-line"><span class="event-chip"><small>${ev.period === 'all' ? 'All day' : 'Period ' + ev.period}</small></span><span class="tag">Event</span></div><div class="event-title">${escapeHtml(ev.title)}</div>${ev.note ? `<div class="event-note">${escapeHtml(ev.note)}</div>` : ''}${ev.description ? `<div class="event-description">${escapeHtml(ev.description)}</div>` : ''}</article>`).join('');
+	if (!schedule.events.length) return '<p class="muted-copy">No special events scheduled.</p>';
+	return schedule.events.map(ev => `
+		<article class="event-card">
+			<div class="event-header">
+				<span class="event-chip">${ev.period === 'all' ? 'All day' : 'Period ' + ev.period}</span>
+			</div>
+			<div class="event-title">${escapeHtml(ev.title)}</div>
+			${ev.note ? `<div class="event-note">${escapeHtml(ev.note)}</div>` : ''}
+			${ev.description ? `<div class="event-description">${escapeHtml(ev.description)}</div>` : ''}
+		</article>
+	`).join('');
 }
 
 function ensureScheduleShape(s) {

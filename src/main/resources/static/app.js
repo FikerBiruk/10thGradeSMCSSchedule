@@ -176,32 +176,47 @@ function renderDesktopSchedule() {
 	const grid = document.getElementById("scheduleGrid");
 	grid.innerHTML = "";
 
-	DAYS.forEach((day) => {
-		const column = document.createElement("div");
-		column.className = "grid-column";
-		column.innerHTML = `<div class="grid-head">${DAY_LABELS[day]}</div>`;
+	// Empty corner
+	grid.appendChild(document.createElement("div"));
 
-		PERIODS.forEach((period) => {
+	// Day headers
+	DAYS.forEach((day) => {
+		const head = document.createElement("div");
+		head.className = "grid-head";
+		head.textContent = DAY_LABELS[day];
+		grid.appendChild(head);
+	});
+
+	// Grid rows (Periods)
+	PERIODS.forEach((period) => {
+		// Period label
+		const label = document.createElement("div");
+		label.className = "grid-cell-label";
+		label.textContent = `P${period}`;
+		grid.appendChild(label);
+
+		// Drop zones for each day
+		DAYS.forEach((day) => {
 			const cell = document.createElement("div");
 			cell.className = "grid-cell";
 			cell.dataset.day = day;
 			cell.dataset.period = String(period);
 			cell.addEventListener("dragover", allowDrop);
 			cell.addEventListener("drop", handleDrop);
-
-			const label = document.createElement("div");
-			label.className = "cell-label";
-			label.textContent = `Period ${period}`;
-			cell.appendChild(label);
-
-			getBlocksForCell(day, period).forEach((block) => {
-				cell.appendChild(createBlockCard(block));
-			});
-
-			column.appendChild(cell);
+			grid.appendChild(cell);
 		});
+	});
 
-		grid.appendChild(column);
+	// Blocks (drawn over the grid)
+	state.blocks.forEach((block) => {
+		const dayIdx = DAYS.indexOf(block.day);
+		if (dayIdx === -1) return;
+
+		const card = createBlockCard(block);
+		card.style.gridRow = `${block.periodStart + 1} / span ${block.length}`;
+		card.style.gridColumn = dayIdx + 2;
+		card.style.zIndex = "10";
+		grid.appendChild(card);
 	});
 }
 
@@ -238,7 +253,8 @@ function renderMobileSchedule() {
 
 function createBlockCard(block) {
 	const card = document.createElement("article");
-	card.className = "block-card";
+	const isDouble = block.length > 1;
+	card.className = `block-card ${isDouble ? "double-period" : ""}`;
 	card.draggable = true;
 	card.dataset.id = block.id;
 	card.addEventListener("dragstart", handleDragStart);
@@ -249,10 +265,11 @@ function createBlockCard(block) {
 			<div>
 				<div class="block-title">${escapeHtml(block.course)} ${escapeHtml(block.group)}</div>
 				<div class="block-meta">Room ${escapeHtml(block.room)}</div>
+				${isDouble ? '<div class="double-badge">Double Period</div>' : ""}
 			</div>
 			<button class="block-delete" type="button" aria-label="Delete block">×</button>
 		</div>
-		<div class="block-meta">${block.day} · Period ${block.periodStart} · Length ${block.length}</div>
+		<div class="block-meta">${DAY_LABELS[block.day]} · Period ${block.periodStart}${isDouble ? '-' + (block.periodStart + 1) : ''}</div>
 	`;
 
 	card.querySelector(".block-delete").addEventListener("click", async (event) => {
@@ -288,6 +305,40 @@ async function handleDrop(event) {
 		const targetPeriod = Number(event.currentTarget.dataset.period);
 		const block = state.blocks.find((item) => item.id === blockId);
 		if (!block) {
+			return;
+		}
+
+		// Check for merging
+		const sameCourseAdjacent = state.blocks.find(b =>
+			b.id !== blockId &&
+			b.day === targetDay &&
+			b.course === block.course &&
+			b.group === block.group &&
+			(b.periodStart === targetPeriod + 1 || b.periodStart === targetPeriod - 1)
+		);
+
+		if (sameCourseAdjacent) {
+			const start = Math.min(targetPeriod, sameCourseAdjacent.periodStart);
+			const updated = {
+				...sameCourseAdjacent,
+				periodStart: start,
+				length: 2
+			};
+
+			// Delete the dropped block first to avoid collision on the backend
+			await authorizedFetch(`/api/blocks/${blockId}`, { method: "DELETE" });
+
+			const response = await authorizedFetch(`/api/blocks/${sameCourseAdjacent.id}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(updated),
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to merge blocks (${response.status}).`);
+			}
+
+			await loadSchedule();
 			return;
 		}
 
