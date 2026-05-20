@@ -282,11 +282,15 @@ function renderAdminBlock(block, key, idx) {
 	const isDouble = Number(block.length) === 2;
 	const canDouble = idx < 3;
 	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''}">
-		<div class="course-name">${escapeHtml(block.course)}</div>
-		<div class="teacher-name">${escapeHtml(block.teacher)}</div>
-		<input type="text" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}">
-		<div class="block-actions">
-			${canDouble ? `<button class="toggle-double-btn ${isDouble ? 'active' : ''}" data-action="toggle-double" data-period-index="${idx}" data-block-key="${key}">${isDouble ? 'Double Period ON' : 'Make Double'}</button>` : ''}
+		<div class="block-info">
+			<div class="course-name">${escapeHtml(block.course)}</div>
+			<div class="teacher-name">${escapeHtml(block.teacher)}</div>
+		</div>
+		<div class="block-controls">
+			<input type="text" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}" placeholder="Room">
+			<div class="block-actions">
+				${canDouble ? `<button class="toggle-double-btn ${isDouble ? 'active' : ''}" data-action="toggle-double" data-period-index="${idx}" data-block-key="${key}">${isDouble ? 'Double Period ON' : 'Make Double'}</button>` : ''}
+			</div>
 		</div>
 		${isDouble ? '<div class="double-badge">Double Period</div>' : ''}
 	</div>`;
