@@ -70,7 +70,7 @@ a {
 }
 
 .site-shell {
-	width: min(1280px, 100%);
+	width: min(1400px, 100%);
 	margin: 0 auto;
 	display: grid;
 	gap: 20px;
@@ -132,10 +132,31 @@ a {
 	z-index: 101;
 }
 
+.sidebar-header-box {
+	display: grid;
+	gap: 16px;
+}
+
+.sidebar-header-box h1 {
+	font-size: 2rem;
+	line-height: 1.1;
+}
+
+.sidebar-actions {
+	position: relative;
+	margin-top: 8px;
+}
+
+.sidebar-actions .settings-menu {
+	right: auto;
+	left: 0;
+	top: 100%;
+}
+
 .public-grid,
 .admin-grid {
 	display: grid;
-	grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
+	grid-template-columns: 1fr 340px;
 	gap: 20px;
 	position: relative;
 	z-index: 1;

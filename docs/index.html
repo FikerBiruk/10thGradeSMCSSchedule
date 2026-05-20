@@ -8,23 +8,6 @@
 </head>
 <body class="public-page" data-page="public">
 	<div class="site-shell">
-		<header class="hero surface">
-			<div class="hero-copy">
-				<p class="eyebrow">SMCS Schedule</p>
-				<h1>Block Schedule</h1>
-				<p class="lede">insert random stuff here lata</p>
-			</div>
-			<div class="hero-actions">
-				<button id="settingsButton" class="secondary-btn" type="button">Settings</button>
-				<div id="settingsMenu" class="settings-menu hidden">
-					<button id="darkModeToggle" class="settings-item" type="button">Dark Mode</button>
-					<button id="lightModeToggle" class="settings-item" type="button">Light Mode</button>
-					<hr class="settings-divider">
-					<a href="admin/" class="settings-item settings-link">Admin</a>
-				</div>
-			</div>
-		</header>
-
 		<section class="public-grid">
 			<main class="surface main-panel">
 				<div id="publicSchedule" class="period-board"></div>
@@ -32,14 +15,31 @@
 
 			<aside class="sidebar-stack">
 				<section class="surface info-card">
-					<p class="eyebrow">Credit</p>
-					<h2 class="credit-heading">Made By: <span class="faan-credit" title="Fiker, Aeshan, Ayan, Natan">FAAN</span></h2>
+					<div class="sidebar-header-box">
+						<p class="eyebrow">SMCS Schedule</p>
+						<h1>Block Schedule</h1>
+						<p class="lede">insert random stuff here lata</p>
+						<div class="sidebar-actions">
+							<button id="settingsButton" class="secondary-btn" type="button">Settings</button>
+							<div id="settingsMenu" class="settings-menu hidden">
+								<button id="darkModeToggle" class="settings-item" type="button">Dark Mode</button>
+								<button id="lightModeToggle" class="settings-item" type="button">Light Mode</button>
+								<hr class="settings-divider">
+								<a href="admin/" class="settings-item settings-link">Admin</a>
+							</div>
+						</div>
+					</div>
 				</section>
 
 				<section class="surface info-card">
 					<p class="eyebrow">Special Events</p>
 					<h2>This Week</h2>
 					<div id="publicEvents" class="event-feed"></div>
+				</section>
+
+				<section class="surface info-card">
+					<p class="eyebrow">Credit</p>
+					<h2 class="credit-heading">Made By: <span class="faan-credit" title="Fiker, Aeshan, Ayan, Natan">FAAN</span></h2>
 				</section>
 			</aside>
 		</section>
