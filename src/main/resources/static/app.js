@@ -312,15 +312,17 @@ function allowDrop(event) {
 async function handleDrop(event) {
 	try {
 		event.preventDefault();
-		event.currentTarget.classList.remove("drag-over");
+		const currentTarget = event.currentTarget;
+		currentTarget.classList.remove("drag-over");
 
 		const blockId = event.dataTransfer.getData("text/plain") || state.draggedId;
-		const targetDay = event.currentTarget.dataset.day;
-		const targetPeriod = Number(event.currentTarget.dataset.period);
+		const targetDay = currentTarget.dataset.day;
+		const targetPeriod = Number(currentTarget.dataset.period);
+
+		if (!blockId || !targetDay || isNaN(targetPeriod)) return;
+
 		const block = state.blocks.find((item) => item.id === blockId);
-		if (!block) {
-			return;
-		}
+		if (!block) return;
 
 		// SWAP LOGIC: Find if there's a block already in the target cell (matching group)
 		const targetBlock = state.blocks.find(b =>
@@ -335,33 +337,28 @@ async function handleDrop(event) {
 			const originalDay = block.day;
 			const originalPeriod = block.periodStart;
 
-			try {
-				// Swap by using DELETE and POST/PUT to bypass collision checks
-				// Perform all operations, then reload once
-				await authorizedFetch(`/api/blocks/${targetBlock.id}`, { method: "DELETE" });
+			// Perform all operations without calling loadSchedule in between
+			await authorizedFetch(`/api/blocks/${targetBlock.id}`, { method: "DELETE" });
 
-				const updateDragged = { ...block, day: targetDay, periodStart: targetPeriod };
-				await authorizedFetch(`/api/blocks/${block.id}`, {
-					method: "PUT",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify(updateDragged),
-				});
+			const updateDragged = { ...block, day: targetDay, periodStart: targetPeriod };
+			await authorizedFetch(`/api/blocks/${block.id}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(updateDragged),
+			});
 
-				const createNew = { ...targetBlock, id: null, day: originalDay, periodStart: originalPeriod };
-				await authorizedFetch("/api/blocks", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify(createNew),
-				});
-			} catch (e) {
-				console.error("Swap failed", e);
-			}
+			const createNew = { ...targetBlock, id: null, day: originalDay, periodStart: originalPeriod };
+			await authorizedFetch("/api/blocks", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(createNew),
+			});
 
 			await loadSchedule();
 			return;
 		}
 
-		// Check for merging (if no swap)
+		// Check for merging
 		const sameCourseAdjacent = state.blocks.find(b =>
 			b.id !== blockId &&
 			b.day === targetDay &&
@@ -378,45 +375,28 @@ async function handleDrop(event) {
 				length: 2
 			};
 
-			// Delete the dropped block first to avoid collision on the backend
 			await authorizedFetch(`/api/blocks/${blockId}`, { method: "DELETE" });
-
-			const response = await authorizedFetch(`/api/blocks/${sameCourseAdjacent.id}`, {
+			await authorizedFetch(`/api/blocks/${sameCourseAdjacent.id}`, {
 				method: "PUT",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(updated),
 			});
 
-			if (!response.ok) {
-				throw new Error(`Failed to merge blocks (${response.status}).`);
-			}
-
 			await loadSchedule();
 			return;
 		}
 
-		const updated = {
-			...block,
-			day: targetDay,
-			periodStart: targetPeriod,
-		};
-
-		const response = await authorizedFetch(`/api/blocks/${block.id}`, {
+		const updated = { ...block, day: targetDay, periodStart: targetPeriod };
+		await authorizedFetch(`/api/blocks/${block.id}`, {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(updated),
 		});
 
-		if (!response.ok) {
-			throw new Error(`Failed to move block (${response.status}).`);
-		}
-
 		await loadSchedule();
 	} catch (error) {
-		alert(error.message);
-		if (String(error.message).includes("401")) {
-			authorizeFailure();
-		}
+		console.error("Drop failed", error);
+		alert("Operation failed: " + error.message);
 	}
 }
 

@@ -320,19 +320,6 @@ function setupDragAndDrop() {
 		b.addEventListener('dragend', () => {
 			b.classList.remove('dragging');
 		});
-		// Add drop listeners to the block itself to allow swapping even if it covers the zone
-		b.addEventListener('dragover', e => {
-			e.preventDefault();
-			b.closest('.block-col').classList.add('drag-over');
-		});
-		b.addEventListener('dragleave', () => {
-			b.closest('.block-col').classList.remove('drag-over');
-		});
-		b.addEventListener('drop', e => {
-			e.preventDefault();
-			b.closest('.block-col').classList.remove('drag-over');
-			// Drop logic will be handled by the bubbling event on .block-col
-		});
 	});
 
 	zones.forEach(z => {

@@ -452,6 +452,12 @@ a {
 	background: rgba(255, 255, 255, 0.03);
 	padding: 15px;
 	border-radius: 15px;
+	pointer-events: none; /* Let drag events pass through to the td zone */
+}
+
+.admin-block-cell input,
+.admin-block-cell button {
+	pointer-events: auto; /* Re-enable for controls */
 }
 
 .admin-block-cell.is-double {
