@@ -126,16 +126,16 @@ a {
 .public-grid,
 .admin-grid {
 	display: grid;
-	grid-template-columns: 1fr minmax(360px, 420px);
+	grid-template-columns: 1fr 400px;
 	gap: 24px;
 	position: relative;
-	z-index: 1;
 }
 
 .main-panel {
 	min-width: 0;
 	border-radius: var(--radius-xl);
 	padding: 24px;
+	z-index: 1;
 }
 
 .sidebar-header-box {
@@ -167,7 +167,7 @@ a {
 	position: sticky;
 	top: 20px;
 	height: fit-content;
-	z-index: 100;
+	z-index: 2000;
 }
 
 .info-card, .editor-panel, .auth-card, .toolbar-panel {
@@ -536,10 +536,10 @@ a {
 	position: absolute;
 	top: calc(100% + 8px);
 	left: 0;
-	background: var(--bg-2);
+	background: #0f172a; /* Solid background for visibility */
 	border: 1px solid var(--line);
 	border-radius: 20px;
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+	box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
 	z-index: 9999;
 	min-width: 220px;
 	overflow: hidden;
