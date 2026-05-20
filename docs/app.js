@@ -76,13 +76,18 @@ function saveSchedule(s) {
 }
 
 function applyAutoMerge(schedule) {
-	schedule.periods.forEach((p, idx) => {
+	for (let idx = 0; idx < schedule.periods.length - 1; idx++) {
+		const p = schedule.periods[idx];
 		const next = schedule.periods[idx + 1];
-		if (!next) return;
 
 		['x', 'y'].forEach(key => {
 			const b1 = p[key];
 			const b2 = next[key];
+
+			// If b1 is already a double, it covers b2, so we don't start a new double at b2
+			const prev = idx > 0 ? schedule.periods[idx - 1] : null;
+			if (prev && Number(prev[key].length) === 2) return;
+
 			if (b1.course && b1.course !== "None" && b1.course === b2.course) {
 				b1.length = 2;
 				b2.teacher = b1.teacher;
@@ -94,7 +99,7 @@ function applyAutoMerge(schedule) {
 				}
 			}
 		});
-	});
+	}
 }
 
 function initPublicPage() {
@@ -296,12 +301,18 @@ function setupDragAndDrop() {
 	const tableBlocks = document.querySelectorAll('.admin-block-cell[draggable="true"]');
 	const zones = document.querySelectorAll('.admin-table .block-col');
 
+	const setDragging = (active) => document.body.classList.toggle('dragging-active', active);
+
 	cards.forEach(c => {
 		c.addEventListener('dragstart', e => {
 			e.dataTransfer.setData('text/plain', 'library:' + c.dataset.course);
 			c.classList.add('dragging');
+			setDragging(true);
 		});
-		c.addEventListener('dragend', () => c.classList.remove('dragging'));
+		c.addEventListener('dragend', () => {
+			c.classList.remove('dragging');
+			setDragging(false);
+		});
 	});
 
 	tableBlocks.forEach(b => {
@@ -309,51 +320,69 @@ function setupDragAndDrop() {
 			const data = { type: 'table', idx: b.dataset.periodIndex, key: b.dataset.blockKey };
 			e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(data));
 			b.classList.add('dragging');
+			setDragging(true);
 		});
-		b.addEventListener('dragend', () => b.classList.remove('dragging'));
+		b.addEventListener('dragend', () => {
+			b.classList.remove('dragging');
+			setDragging(false);
+		});
 	});
 
 	zones.forEach(z => {
-		z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
+		z.addEventListener('dragover', e => {
+			e.preventDefault();
+			z.classList.add('drag-over');
+		});
 		z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
 		z.addEventListener('drop', e => {
 			e.preventDefault();
 			z.classList.remove('drag-over');
+			setDragging(false);
+
 			const rawData = e.dataTransfer.getData('text/plain');
 			const targetIdx = Number(z.dataset.periodIndex);
 			const targetKey = z.dataset.block;
 
+			if (!rawData) return;
+
+			const schedule = state.schedule;
+
 			if (rawData.startsWith('library:')) {
 				const course = rawData.replace('library:', '');
-				const block = state.schedule.periods[targetIdx][targetKey];
+				const block = schedule.periods[targetIdx][targetKey];
 				block.course = course;
 				const lib = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
 				block.teacher = lib.teacher;
 				block.room = lib.room;
+				block.length = 1;
 			} else if (rawData.startsWith('table:')) {
-				const source = JSON.parse(rawData.replace('table:', ''));
-				const sourceIdx = Number(source.idx);
-				const sourceKey = source.key;
+				try {
+					const source = JSON.parse(rawData.replace('table:', ''));
+					const sourceIdx = Number(source.idx);
+					const sourceKey = source.key;
 
-				// Don't swap with self
-				if (sourceIdx === targetIdx && sourceKey === targetKey) return;
+					if (sourceIdx === targetIdx && sourceKey === targetKey) return;
 
-				const sBlock = state.schedule.periods[sourceIdx][sourceKey];
-				const tBlock = state.schedule.periods[targetIdx][targetKey];
+					const sBlock = schedule.periods[sourceIdx][sourceKey];
+					const tBlock = schedule.periods[targetIdx][targetKey];
 
-				// Swap the core data
-				const temp = { course: sBlock.course, teacher: sBlock.teacher, room: sBlock.room, note: sBlock.note };
-				sBlock.course = tBlock.course;
-				sBlock.teacher = tBlock.teacher;
-				sBlock.room = tBlock.room;
-				sBlock.note = tBlock.note;
+					// Swap the core data (course, teacher, room, length)
+					const temp = { ...sBlock };
 
-				tBlock.course = temp.course;
-				tBlock.teacher = temp.teacher;
-				tBlock.room = temp.room;
-				tBlock.note = temp.note;
+					sBlock.course = tBlock.course;
+					sBlock.teacher = tBlock.teacher;
+					sBlock.room = tBlock.room;
+					sBlock.length = tBlock.length;
+
+					tBlock.course = temp.course;
+					tBlock.teacher = temp.teacher;
+					tBlock.room = temp.room;
+					tBlock.length = temp.length;
+				} catch (err) {
+					console.error("Swap failed", err);
+				}
 			}
-			saveSchedule(state.schedule);
+			saveSchedule(schedule);
 		});
 	});
 }

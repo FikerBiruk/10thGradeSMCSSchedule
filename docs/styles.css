@@ -443,11 +443,20 @@ a {
 	border-radius: 12px;
 }
 
+body.dragging-active .admin-block-cell,
+body.dragging-active .draggable-card {
+	pointer-events: none;
+}
+
 .admin-block-cell {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 	height: 100%;
+	position: relative;
+	background: rgba(255, 255, 255, 0.03);
+	padding: 15px;
+	border-radius: 15px;
 }
 
 .admin-block-cell.is-double {

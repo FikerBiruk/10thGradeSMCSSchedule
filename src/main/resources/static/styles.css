@@ -213,9 +213,8 @@ h1, h2, p {
 	border-color: var(--accent);
 }
 
-.block-card.double-period {
-	background: linear-gradient(135deg, rgba(255, 193, 92, 0.25), rgba(255, 193, 92, 0.15));
-	border-color: rgba(255, 193, 92, 0.5);
+body.dragging-active .block-card {
+	pointer-events: none;
 }
 
 .double-badge {

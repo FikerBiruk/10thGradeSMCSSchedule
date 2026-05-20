@@ -284,11 +284,13 @@ function createBlockCard(block) {
 function handleDragStart(event) {
 	state.draggedId = event.currentTarget.dataset.id;
 	event.dataTransfer.setData("text/plain", state.draggedId);
+	document.body.classList.add("dragging-active");
 }
 
 function handleDragEnd() {
 	state.draggedId = null;
 	document.querySelectorAll(".drag-over").forEach((element) => element.classList.remove("drag-over"));
+	document.body.classList.remove("dragging-active");
 }
 
 function allowDrop(event) {
@@ -318,27 +320,33 @@ async function handleDrop(event) {
 		);
 
 		if (targetBlock) {
-			// Save current state to swap
 			const originalDay = block.day;
 			const originalPeriod = block.periodStart;
 
-			// Update the dragged block
+			// Swap IDs/Positions by moving one to a temporary "buffer" day (SUN) to avoid collision
+			const updateTemp = { ...targetBlock, day: "SUN", periodStart: 1 };
 			const updateDragged = { ...block, day: targetDay, periodStart: targetPeriod };
-			// Update the displaced block to the old location
 			const updateDisplaced = { ...targetBlock, day: originalDay, periodStart: originalPeriod };
 
-			await Promise.all([
-				authorizedFetch(`/api/blocks/${block.id}`, {
+			try {
+				await authorizedFetch(`/api/blocks/${targetBlock.id}`, {
+					method: "PUT",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(updateTemp),
+				});
+				await authorizedFetch(`/api/blocks/${block.id}`, {
 					method: "PUT",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify(updateDragged),
-				}),
-				authorizedFetch(`/api/blocks/${targetBlock.id}`, {
+				});
+				await authorizedFetch(`/api/blocks/${targetBlock.id}`, {
 					method: "PUT",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify(updateDisplaced),
-				})
-			]);
+				});
+			} catch (e) {
+				console.error("Swap failed", e);
+			}
 
 			await loadSchedule();
 			return;
