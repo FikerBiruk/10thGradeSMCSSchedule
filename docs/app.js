@@ -123,8 +123,7 @@ function initAdminPage() {
 	setupSettingsMenu();
 	document.getElementById("logoutButton").addEventListener("click", handleLogout);
 	const adminApp = document.getElementById("adminApp");
-	adminApp.addEventListener("input", handleAdminInput);
-	adminApp.addEventListener("change", handleAdminChange);
+	adminApp.addEventListener("change", handleAdminInput); // Changed from 'input' to 'change'
 	adminApp.addEventListener("click", handleAdminClick);
 }
 
@@ -150,15 +149,19 @@ function handleLogout() {
 function handleAdminInput(event) {
 	const target = event.target;
 	const schedule = state.schedule;
+
+	// Handle Event Fields (Title, Note, Description, Period)
 	if (target.matches("[data-event-field]")) {
 		const idx = Number(target.dataset.eventIndex);
 		const field = target.dataset.eventField;
 		if (schedule.events[idx]) {
-			schedule.events[idx][field] = target.value;
+			schedule.events[idx][field] = target.value === "all" ? "all" : (isNaN(target.value) ? target.value : Number(target.value));
 			saveSchedule(schedule);
 			updateSaveStatus();
 		}
 	}
+
+	// Handle Room Edits
 	if (target.matches("[data-room-edit]")) {
 		const idx = Number(target.dataset.periodIndex);
 		const key = target.dataset.blockKey;
@@ -167,16 +170,6 @@ function handleAdminInput(event) {
 			saveSchedule(schedule);
 			updateSaveStatus();
 		}
-	}
-}
-
-function handleAdminChange(event) {
-	const target = event.target;
-	if (target.matches("[data-event-field='period']")) {
-		const idx = Number(target.dataset.eventIndex);
-		state.schedule.events[idx].period = target.value === "all" ? "all" : Number(target.value);
-		saveSchedule(state.schedule);
-		updateSaveStatus();
 	}
 }
 
