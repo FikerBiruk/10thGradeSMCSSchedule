@@ -123,34 +123,39 @@ a {
 	line-height: 1.6;
 }
 
-.hero-actions {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	flex-wrap: wrap;
+.public-grid,
+.admin-grid {
+	display: grid;
+	grid-template-columns: 1fr minmax(360px, 420px);
+	gap: 24px;
 	position: relative;
-	z-index: 101;
+	z-index: 1;
+}
+
+.main-panel {
+	min-width: 0;
 }
 
 .sidebar-header-box {
 	display: grid;
-	gap: 16px;
+	gap: 12px;
 }
 
 .sidebar-header-box h1 {
-	font-size: 2rem;
-	line-height: 1.1;
+	font-size: 2.2rem;
+	line-height: 1;
 }
 
 .sidebar-actions {
 	position: relative;
-	margin-top: 8px;
+	margin-top: 12px;
+	z-index: 2001;
 }
 
 .sidebar-actions .settings-menu {
 	right: auto;
 	left: 0;
-	top: 100%;
+	top: calc(100% + 8px);
 }
 
 .public-grid,
@@ -575,8 +580,8 @@ a {
 	background: var(--bg-2);
 	border: 1px solid var(--line);
 	border-radius: 20px;
-	box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
-	z-index: 2000; /* Extremely high to stay on top */
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+	z-index: 3000;
 	min-width: 220px;
 	overflow: hidden;
 	animation: popIn 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
