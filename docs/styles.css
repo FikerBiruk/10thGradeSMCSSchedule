@@ -414,21 +414,50 @@ a {
 }
 
 .schedule-table td {
-	padding: 20px;
+	padding: 32px 20px;
 	border-bottom: 1px solid var(--line);
-	vertical-align: top;
+	vertical-align: middle;
+}
+
+.table-block {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	gap: 8px;
+}
+
+.course-name {
+	font-size: 1.2rem;
+	font-weight: 800;
+	color: var(--text);
+}
+
+.teacher-name {
+	font-size: 0.95rem;
+	color: var(--muted);
+	font-weight: 600;
+}
+
+.room-number {
+	font-size: 0.85rem;
+	color: var(--muted-2);
+	font-weight: 700;
+	text-transform: uppercase;
 }
 
 .period-col {
-	width: 120px;
+	width: 140px;
 	font-weight: 800;
 	background: rgba(255, 255, 255, 0.02);
 	text-align: center !important;
 }
 
 .period-label {
-	font-size: 1.1rem;
+	font-size: 1.2rem;
 	color: var(--accent);
+	display: block;
+	margin: 10px 0;
 }
 
 .block-col.block-x { border-left: 4px solid var(--x); background: rgba(89, 212, 179, 0.03); }
@@ -455,11 +484,14 @@ a {
 	background: rgba(255, 255, 255, 0.03);
 	padding: 15px;
 	border-radius: 15px;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
 }
 
 .admin-block-cell.is-double {
 	justify-content: center;
-	padding: 20px 0;
+	padding: 40px 0;
 }
 
 .room-input {
