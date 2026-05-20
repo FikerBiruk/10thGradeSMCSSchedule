@@ -309,7 +309,42 @@ async function handleDrop(event) {
 			return;
 		}
 
-		// Check for merging
+		// SWAP LOGIC: Find if there's a block already in the target cell (matching group)
+		const targetBlock = state.blocks.find(b =>
+			b.day === targetDay &&
+			b.periodStart === targetPeriod &&
+			b.group === block.group &&
+			b.id !== block.id
+		);
+
+		if (targetBlock) {
+			// Save current state to swap
+			const originalDay = block.day;
+			const originalPeriod = block.periodStart;
+
+			// Update the dragged block
+			const updateDragged = { ...block, day: targetDay, periodStart: targetPeriod };
+			// Update the displaced block to the old location
+			const updateDisplaced = { ...targetBlock, day: originalDay, periodStart: originalPeriod };
+
+			await Promise.all([
+				authorizedFetch(`/api/blocks/${block.id}`, {
+					method: "PUT",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(updateDragged),
+				}),
+				authorizedFetch(`/api/blocks/${targetBlock.id}`, {
+					method: "PUT",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(updateDisplaced),
+				})
+			]);
+
+			await loadSchedule();
+			return;
+		}
+
+		// Check for merging (if no swap)
 		const sameCourseAdjacent = state.blocks.find(b =>
 			b.id !== blockId &&
 			b.day === targetDay &&

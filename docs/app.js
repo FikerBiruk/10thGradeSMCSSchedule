@@ -276,7 +276,7 @@ function renderAdminTable(schedule) {
 function renderAdminBlock(block, key, idx) {
 	const isDouble = Number(block.length) === 2;
 	const canDouble = idx < 3;
-	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''}">
+	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''}" draggable="true" data-source-type="table" data-period-index="${idx}" data-block-key="${key}">
 		<div class="course-name">${escapeHtml(block.course)}</div>
 		<div class="teacher-name">${escapeHtml(block.teacher)}</div>
 		<input type="text" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}">
@@ -293,28 +293,66 @@ function renderClassCards() {
 
 function setupDragAndDrop() {
 	const cards = document.querySelectorAll('.draggable-card');
+	const tableBlocks = document.querySelectorAll('.admin-block-cell[draggable="true"]');
 	const zones = document.querySelectorAll('.admin-table .block-col');
+
 	cards.forEach(c => {
 		c.addEventListener('dragstart', e => {
-			e.dataTransfer.setData('text/plain', c.dataset.course);
+			e.dataTransfer.setData('text/plain', 'library:' + c.dataset.course);
 			c.classList.add('dragging');
 		});
 		c.addEventListener('dragend', () => c.classList.remove('dragging'));
 	});
+
+	tableBlocks.forEach(b => {
+		b.addEventListener('dragstart', e => {
+			const data = { type: 'table', idx: b.dataset.periodIndex, key: b.dataset.blockKey };
+			e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(data));
+			b.classList.add('dragging');
+		});
+		b.addEventListener('dragend', () => b.classList.remove('dragging'));
+	});
+
 	zones.forEach(z => {
 		z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
 		z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
 		z.addEventListener('drop', e => {
 			e.preventDefault();
 			z.classList.remove('drag-over');
-			const course = e.dataTransfer.getData('text/plain');
-			const pIdx = Number(z.dataset.periodIndex);
-			const bKey = z.dataset.block;
-			const block = state.schedule.periods[pIdx][bKey];
-			block.course = course;
-			const lib = COURSE_LIBRARY[course];
-			block.teacher = lib.teacher;
-			block.room = lib.room;
+			const rawData = e.dataTransfer.getData('text/plain');
+			const targetIdx = Number(z.dataset.periodIndex);
+			const targetKey = z.dataset.block;
+
+			if (rawData.startsWith('library:')) {
+				const course = rawData.replace('library:', '');
+				const block = state.schedule.periods[targetIdx][targetKey];
+				block.course = course;
+				const lib = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
+				block.teacher = lib.teacher;
+				block.room = lib.room;
+			} else if (rawData.startsWith('table:')) {
+				const source = JSON.parse(rawData.replace('table:', ''));
+				const sourceIdx = Number(source.idx);
+				const sourceKey = source.key;
+
+				// Don't swap with self
+				if (sourceIdx === targetIdx && sourceKey === targetKey) return;
+
+				const sBlock = state.schedule.periods[sourceIdx][sourceKey];
+				const tBlock = state.schedule.periods[targetIdx][targetKey];
+
+				// Swap the core data
+				const temp = { course: sBlock.course, teacher: sBlock.teacher, room: sBlock.room, note: sBlock.note };
+				sBlock.course = tBlock.course;
+				sBlock.teacher = tBlock.teacher;
+				sBlock.room = tBlock.room;
+				sBlock.note = tBlock.note;
+
+				tBlock.course = temp.course;
+				tBlock.teacher = temp.teacher;
+				tBlock.room = temp.room;
+				tBlock.note = temp.note;
+			}
 			saveSchedule(state.schedule);
 		});
 	});
