@@ -334,7 +334,11 @@ async function deleteBlock(blockId) {
 
 function getBlocksForCell(day, period) {
 	return state.blocks
-		.filter((block) => block.day === day && block.periodStart === period)
+		.filter((block) => {
+			const start = block.periodStart;
+			const end = start + block.length - 1;
+			return block.day === day && period >= start && period <= end;
+		})
 		.sort((left, right) => left.course.localeCompare(right.course));
 }
 

@@ -163,11 +163,19 @@ function handleAdminClick(event) {
 			target.textContent = el.classList.contains('hidden') ? 'Add description' : 'Hide description';
 		}
 	}
-	if (target.matches("[data-action='toggle-double']")) {
+		if (target.matches("[data-action='toggle-double']")) {
 		const idx = Number(target.dataset.periodIndex);
 		const key = target.dataset.blockKey;
 		const schedule = state.schedule;
-		schedule.periods[idx][key].length = Number(schedule.periods[idx][key].length) === 2 ? 1 : 2;
+		const isNowDouble = Number(schedule.periods[idx][key].length) === 1;
+		if (isNowDouble) {
+			schedule.periods[idx][key].length = 2;
+			if (schedule.periods[idx + 1]) {
+				schedule.periods[idx + 1][key].length = 1;
+			}
+		} else {
+			schedule.periods[idx][key].length = 1;
+		}
 		saveSchedule(schedule);
 	}
 }
@@ -193,7 +201,6 @@ function renderPublicTable(schedule) {
 		const prev = idx > 0 ? schedule.periods[idx-1] : null;
 		const skipX = prev && Number(prev.x.length) === 2;
 		const skipY = prev && Number(prev.y.length) === 2;
-		if (skipX && skipY) return;
 		html += `<tr class="period-row">
 			<td class="period-col"><span class="period-label">Period ${p.period}</span></td>
 			${skipX ? '' : `<td class="block-col block-x" ${Number(p.x.length) === 2 ? 'rowspan="2"' : ''}>
@@ -221,13 +228,21 @@ function renderAdminTable(schedule) {
 	return `<table class="schedule-table admin-table">
 		<thead><tr><th class="period-col">Period</th><th class="block-col">Block X</th><th class="block-col">Block Y</th></tr></thead>
 		<tbody>
-			${schedule.periods.map((p, idx) => `
+			${schedule.periods.map((p, idx) => {
+				const prev = idx > 0 ? schedule.periods[idx - 1] : null;
+				const coveredX = prev && Number(prev.x.length) === 2;
+				const coveredY = prev && Number(prev.y.length) === 2;
+				return `
 				<tr>
 					<td class="period-col"><span class="period-label">Period ${p.period}</span></td>
-					<td class="block-col block-x" data-block="x" data-period-index="${idx}">${renderAdminBlock(p.x, 'x', idx)}</td>
-					<td class="block-col block-y" data-block="y" data-period-index="${idx}">${renderAdminBlock(p.y, 'y', idx)}</td>
-				</tr>
-			`).join('')}
+					<td class="block-col block-x" data-block="x" data-period-index="${idx}">
+						${coveredX ? `<div class="covered-block">Merged with Period ${idx}</div>` : renderAdminBlock(p.x, 'x', idx)}
+					</td>
+					<td class="block-col block-y" data-block="y" data-period-index="${idx}">
+						${coveredY ? `<div class="covered-block">Merged with Period ${idx}</div>` : renderAdminBlock(p.y, 'y', idx)}
+					</td>
+				</tr>`;
+			}).join('')}
 		</tbody>
 	</table>`;
 }

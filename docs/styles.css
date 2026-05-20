@@ -367,6 +367,18 @@ a {
 .block-col.block-x { border-left: 4px solid var(--x); background: rgba(89, 212, 179, 0.03); }
 .block-col.block-y { border-left: 4px solid var(--y); background: rgba(132, 165, 255, 0.03); }
 
+.covered-block {
+	font-size: 0.8rem;
+	color: var(--muted-2);
+	font-style: italic;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+	background: rgba(255, 255, 255, 0.02);
+	border-radius: 12px;
+}
+
 .admin-block-cell {
 	display: grid;
 	gap: 12px;

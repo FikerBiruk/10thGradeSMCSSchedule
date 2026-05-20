@@ -3,6 +3,7 @@ package com.smcs.smcsschedule.services;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -26,6 +27,7 @@ public class ScheduleService {
 	}
 
 	public Block create(Block request) {
+		validate(request);
 		String id = UUID.randomUUID().toString();
 		Block block = new Block(id, request.day, request.periodStart, request.length, request.course, request.group, request.room);
 		blocks.put(id, block);
@@ -38,6 +40,9 @@ public class ScheduleService {
 			return null;
 		}
 
+		request.id = id;
+		validate(request);
+
 		existing.day = request.day;
 		existing.periodStart = request.periodStart;
 		existing.length = request.length;
@@ -49,6 +54,34 @@ public class ScheduleService {
 
 	public boolean delete(String id) {
 		return blocks.remove(id) != null;
+	}
+
+	private void validate(Block block) {
+		if (block.periodStart < 1 || block.periodStart > 4) {
+			throw new IllegalArgumentException("Invalid start period.");
+		}
+		if (block.length < 1 || block.length > 2) {
+			throw new IllegalArgumentException("Invalid length.");
+		}
+		if (block.periodStart + block.length - 1 > 4) {
+			throw new IllegalArgumentException("Block exceeds daily bounds (max Period 4).");
+		}
+
+		for (Block existing : blocks.values()) {
+			if (Objects.equals(existing.id, block.id)) {
+				continue;
+			}
+			if (Objects.equals(existing.day, block.day) && Objects.equals(existing.group, block.group)) {
+				int start1 = block.periodStart;
+				int end1 = block.periodStart + block.length - 1;
+				int start2 = existing.periodStart;
+				int end2 = existing.periodStart + existing.length - 1;
+
+				if (start1 <= end2 && start2 <= end1) {
+					throw new IllegalArgumentException("Block collision detected for group " + block.group + " on " + block.day);
+				}
+			}
+		}
 	}
 
 	private void seed(Block block) {
