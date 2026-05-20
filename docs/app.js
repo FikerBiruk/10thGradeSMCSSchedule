@@ -328,7 +328,7 @@ function setupDragAndDrop() {
 			e.preventDefault();
 			z.classList.remove('drag-over');
 			const course = e.dataTransfer.getData('text/plain');
-			assignCourseToZone(z, course);
+			handleSelection(z, course, e);
 		});
 
 		// Click to assign
@@ -337,18 +337,33 @@ function setupDragAndDrop() {
 			if (e.target.closest('input') || e.target.closest('button')) return;
 
 			if (state.selectedCourse) {
-				assignCourseToZone(z, state.selectedCourse);
+				handleSelection(z, state.selectedCourse, e);
 			}
 		});
 	});
 }
 
-function assignCourseToZone(zone, course) {
+function handleSelection(zone, course, event) {
 	if (!course) return;
-	const targetIdx = Number(zone.dataset.periodIndex);
+	let targetIdx = Number(zone.dataset.periodIndex);
 	const targetKey = zone.dataset.block;
-	const block = state.schedule.periods[targetIdx][targetKey];
 
+	// Check if we are interacting with a double period
+	const block = state.schedule.periods[targetIdx][targetKey];
+	if (Number(block.length) === 2 && event) {
+		const rect = zone.getBoundingClientRect();
+		const relativeY = event.clientY - rect.top;
+		// If clicked/dropped in the bottom half, target the next period
+		if (relativeY > rect.height / 2) {
+			targetIdx = targetIdx + 1;
+		}
+	}
+
+	assignCourseToZone(targetIdx, targetKey, course);
+}
+
+function assignCourseToZone(idx, key, course) {
+	const block = state.schedule.periods[idx][key];
 	block.course = course;
 	const lib = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
 	block.teacher = lib.teacher;
