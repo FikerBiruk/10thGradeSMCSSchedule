@@ -281,7 +281,7 @@ function renderAdminTable(schedule) {
 function renderAdminBlock(block, key, idx) {
 	const isDouble = Number(block.length) === 2;
 	const canDouble = idx < 3;
-	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''}" draggable="true" data-source-type="table" data-period-index="${idx}" data-block-key="${key}">
+	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''}">
 		<div class="course-name">${escapeHtml(block.course)}</div>
 		<div class="teacher-name">${escapeHtml(block.teacher)}</div>
 		<input type="text" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}">
@@ -298,27 +298,15 @@ function renderClassCards() {
 
 function setupDragAndDrop() {
 	const cards = document.querySelectorAll('.draggable-card');
-	const tableBlocks = document.querySelectorAll('.admin-block-cell[draggable="true"]');
 	const zones = document.querySelectorAll('.admin-table .block-col');
 
 	cards.forEach(c => {
 		c.addEventListener('dragstart', e => {
-			e.dataTransfer.setData('text/plain', 'library:' + c.dataset.course);
+			e.dataTransfer.setData('text/plain', c.dataset.course);
 			c.classList.add('dragging');
 		});
 		c.addEventListener('dragend', () => {
 			c.classList.remove('dragging');
-		});
-	});
-
-	tableBlocks.forEach(b => {
-		b.addEventListener('dragstart', e => {
-			const data = { type: 'table', idx: b.dataset.periodIndex, key: b.dataset.blockKey };
-			e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(data));
-			b.classList.add('dragging');
-		});
-		b.addEventListener('dragend', () => {
-			b.classList.remove('dragging');
 		});
 	});
 
@@ -332,50 +320,20 @@ function setupDragAndDrop() {
 			e.preventDefault();
 			z.classList.remove('drag-over');
 
-			const rawData = e.dataTransfer.getData('text/plain');
+			const course = e.dataTransfer.getData('text/plain');
 			const targetIdx = Number(z.dataset.periodIndex);
 			const targetKey = z.dataset.block;
 
-			if (!rawData) return;
+			if (!course) return;
 
-			const schedule = state.schedule;
+			const block = state.schedule.periods[targetIdx][targetKey];
+			block.course = course;
+			const lib = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
+			block.teacher = lib.teacher;
+			block.room = lib.room;
+			block.length = 1;
 
-			if (rawData.startsWith('library:')) {
-				const course = rawData.replace('library:', '');
-				const block = schedule.periods[targetIdx][targetKey];
-				block.course = course;
-				const lib = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
-				block.teacher = lib.teacher;
-				block.room = lib.room;
-				block.length = 1;
-			} else if (rawData.startsWith('table:')) {
-				try {
-					const source = JSON.parse(rawData.replace('table:', ''));
-					const sourceIdx = Number(source.idx);
-					const sourceKey = source.key;
-
-					if (sourceIdx === targetIdx && sourceKey === targetKey) return;
-
-					const sBlock = schedule.periods[sourceIdx][sourceKey];
-					const tBlock = schedule.periods[targetIdx][targetKey];
-
-					// Swap the core data (course, teacher, room, length)
-					const temp = { ...sBlock };
-
-					sBlock.course = tBlock.course;
-					sBlock.teacher = tBlock.teacher;
-					sBlock.room = tBlock.room;
-					sBlock.length = tBlock.length;
-
-					tBlock.course = temp.course;
-					tBlock.teacher = temp.teacher;
-					tBlock.room = temp.room;
-					tBlock.length = temp.length;
-				} catch (err) {
-					console.error("Swap failed", err);
-				}
-			}
-			saveSchedule(schedule);
+			saveSchedule(state.schedule);
 		});
 	});
 }

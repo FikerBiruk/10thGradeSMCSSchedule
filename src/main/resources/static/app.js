@@ -324,40 +324,6 @@ async function handleDrop(event) {
 		const block = state.blocks.find((item) => item.id === blockId);
 		if (!block) return;
 
-		// SWAP LOGIC: Find if there's a block already in the target cell (matching group)
-		const targetBlock = state.blocks.find(b =>
-			b.day === targetDay &&
-			targetPeriod >= b.periodStart &&
-			targetPeriod < b.periodStart + b.length &&
-			b.group === block.group &&
-			b.id !== block.id
-		);
-
-		if (targetBlock) {
-			const originalDay = block.day;
-			const originalPeriod = block.periodStart;
-
-			// Perform all operations without calling loadSchedule in between
-			await authorizedFetch(`/api/blocks/${targetBlock.id}`, { method: "DELETE" });
-
-			const updateDragged = { ...block, day: targetDay, periodStart: targetPeriod };
-			await authorizedFetch(`/api/blocks/${block.id}`, {
-				method: "PUT",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(updateDragged),
-			});
-
-			const createNew = { ...targetBlock, id: null, day: originalDay, periodStart: originalPeriod };
-			await authorizedFetch("/api/blocks", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(createNew),
-			});
-
-			await loadSchedule();
-			return;
-		}
-
 		// Check for merging
 		const sameCourseAdjacent = state.blocks.find(b =>
 			b.id !== blockId &&
