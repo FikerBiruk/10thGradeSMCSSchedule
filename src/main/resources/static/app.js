@@ -219,11 +219,6 @@ function renderDesktopSchedule() {
 		card.style.gridColumn = dayIdx + 2;
 		card.style.zIndex = "10";
 
-		// Ensure card also acts as a drop zone for swapping
-		card.addEventListener("dragover", allowDrop);
-		card.addEventListener("dragleave", handleDragLeave);
-		card.addEventListener("drop", handleDrop);
-
 		grid.appendChild(card);
 	});
 }

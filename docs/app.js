@@ -42,6 +42,7 @@ const DEFAULT_SCHEDULE = {
 const state = {
 	schedule: DEFAULT_SCHEDULE,
 	darkMode: true,
+	selectedCourse: null, // "Bio", "CS", etc.
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -304,42 +305,64 @@ function setupDragAndDrop() {
 	const cards = document.querySelectorAll('.draggable-card');
 	const zones = document.querySelectorAll('.admin-table .block-col');
 
+	// CLICK-TO-ASSIGN logic (Much easier than dragging)
 	cards.forEach(c => {
+		// Handle Drag
 		c.addEventListener('dragstart', e => {
 			e.dataTransfer.setData('text/plain', c.dataset.course);
 			c.classList.add('dragging');
 		});
-		c.addEventListener('dragend', () => {
-			c.classList.remove('dragging');
+		c.addEventListener('dragend', () => c.classList.remove('dragging'));
+
+		// Handle Click
+		c.addEventListener('click', () => {
+			if (state.selectedCourse === c.dataset.course) {
+				state.selectedCourse = null;
+				c.classList.remove('active-selection');
+			} else {
+				cards.forEach(card => card.classList.remove('active-selection'));
+				state.selectedCourse = c.dataset.course;
+				c.classList.add('active-selection');
+			}
 		});
 	});
 
 	zones.forEach(z => {
-		z.addEventListener('dragover', e => {
-			e.preventDefault();
-			z.classList.add('drag-over');
-		});
+		// Drag & Drop zones
+		z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
 		z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
 		z.addEventListener('drop', e => {
 			e.preventDefault();
 			z.classList.remove('drag-over');
-
 			const course = e.dataTransfer.getData('text/plain');
-			const targetIdx = Number(z.dataset.periodIndex);
-			const targetKey = z.dataset.block;
+			assignCourseToZone(z, course);
+		});
 
-			if (!course) return;
+		// Click to assign
+		z.addEventListener('click', (e) => {
+			// Don't assign if they clicked an input or button
+			if (e.target.closest('input') || e.target.closest('button')) return;
 
-			const block = state.schedule.periods[targetIdx][targetKey];
-			block.course = course;
-			const lib = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
-			block.teacher = lib.teacher;
-			block.room = lib.room;
-			block.length = 1;
-
-			saveSchedule(state.schedule);
+			if (state.selectedCourse) {
+				assignCourseToZone(z, state.selectedCourse);
+			}
 		});
 	});
+}
+
+function assignCourseToZone(zone, course) {
+	if (!course) return;
+	const targetIdx = Number(zone.dataset.periodIndex);
+	const targetKey = zone.dataset.block;
+	const block = state.schedule.periods[targetIdx][targetKey];
+
+	block.course = course;
+	const lib = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
+	block.teacher = lib.teacher;
+	block.room = lib.room;
+	block.length = 1;
+
+	saveSchedule(state.schedule);
 }
 
 function renderEventsEditor(schedule) {
