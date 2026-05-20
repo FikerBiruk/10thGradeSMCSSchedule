@@ -26,6 +26,10 @@
 	box-sizing: border-box;
 }
 
+[hidden] {
+	display: none !important;
+}
+
 html, body {
 	margin: 0;
 	min-height: 100%;
@@ -611,9 +615,25 @@ body.light-mode .period-col { background: #fcfdfe; }
 /* AUTH / LOGIN                                 */
 /* ============================================ */
 
+body.auth-mode {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+}
+
+body.auth-mode .site-shell {
+	display: flex;
+	justify-content: center;
+}
+
 .auth-card {
 	max-width: 440px;
 	margin: 100px auto;
+}
+
+body.auth-mode .auth-card {
+	margin: 0;
 }
 
 .auth-form {

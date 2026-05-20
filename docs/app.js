@@ -104,11 +104,13 @@ function initPublicPage() {
 
 function initAdminPage() {
 	if (!isAuthenticated()) {
+		document.body.classList.add('auth-mode');
 		document.getElementById("loginPanel").hidden = false;
 		document.getElementById("adminApp").hidden = true;
 		document.getElementById("adminLoginForm").addEventListener("submit", handleAdminLogin);
 		return;
 	}
+	document.body.classList.remove('auth-mode');
 	document.getElementById("loginPanel").hidden = true;
 	document.getElementById("adminApp").hidden = false;
 	renderAdminPage();
