@@ -193,28 +193,37 @@ h1, h2, p {
 	border: 1px solid var(--line);
 	box-shadow: var(--shadow);
 	backdrop-filter: blur(12px);
+	position: relative;
+	transition: background 0.2s ease;
+}
+
+.grid-cell.drag-over {
+	background: rgba(69, 194, 177, 0.15);
+	border-color: var(--accent);
 }
 
 .block-card {
 	border-radius: 14px;
 	padding: 16px;
-	background: linear-gradient(135deg, rgba(69, 194, 177, 0.2), rgba(69, 194, 177, 0.1));
-	border: 1px solid rgba(69, 194, 177, 0.4);
+	background: #1a2a3a;
+	border: 1px solid var(--accent);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 	cursor: grab;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	height: 100%;
-	transition: all 0.2s ease;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	position: relative;
 }
 
 .block-card:hover {
 	transform: scale(1.02);
-	border-color: var(--accent);
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
 }
 
-body.dragging-active .block-card {
-	pointer-events: none;
+.block-card.double-period {
+	border-color: var(--warning, #ffcb6b);
 }
 
 .double-badge {

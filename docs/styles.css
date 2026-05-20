@@ -443,11 +443,6 @@ a {
 	border-radius: 12px;
 }
 
-body.dragging-active .admin-block-cell,
-body.dragging-active .draggable-card {
-	pointer-events: none;
-}
-
 .admin-block-cell {
 	display: flex;
 	flex-direction: column;

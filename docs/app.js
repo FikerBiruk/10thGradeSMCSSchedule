@@ -301,17 +301,13 @@ function setupDragAndDrop() {
 	const tableBlocks = document.querySelectorAll('.admin-block-cell[draggable="true"]');
 	const zones = document.querySelectorAll('.admin-table .block-col');
 
-	const setDragging = (active) => document.body.classList.toggle('dragging-active', active);
-
 	cards.forEach(c => {
 		c.addEventListener('dragstart', e => {
 			e.dataTransfer.setData('text/plain', 'library:' + c.dataset.course);
 			c.classList.add('dragging');
-			setDragging(true);
 		});
 		c.addEventListener('dragend', () => {
 			c.classList.remove('dragging');
-			setDragging(false);
 		});
 	});
 
@@ -320,11 +316,22 @@ function setupDragAndDrop() {
 			const data = { type: 'table', idx: b.dataset.periodIndex, key: b.dataset.blockKey };
 			e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(data));
 			b.classList.add('dragging');
-			setDragging(true);
 		});
 		b.addEventListener('dragend', () => {
 			b.classList.remove('dragging');
-			setDragging(false);
+		});
+		// Add drop listeners to the block itself to allow swapping even if it covers the zone
+		b.addEventListener('dragover', e => {
+			e.preventDefault();
+			b.closest('.block-col').classList.add('drag-over');
+		});
+		b.addEventListener('dragleave', () => {
+			b.closest('.block-col').classList.remove('drag-over');
+		});
+		b.addEventListener('drop', e => {
+			e.preventDefault();
+			b.closest('.block-col').classList.remove('drag-over');
+			// Drop logic will be handled by the bubbling event on .block-col
 		});
 	});
 
@@ -337,7 +344,6 @@ function setupDragAndDrop() {
 		z.addEventListener('drop', e => {
 			e.preventDefault();
 			z.classList.remove('drag-over');
-			setDragging(false);
 
 			const rawData = e.dataTransfer.getData('text/plain');
 			const targetIdx = Number(z.dataset.periodIndex);

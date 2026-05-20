@@ -203,6 +203,7 @@ function renderDesktopSchedule() {
 			cell.dataset.day = day;
 			cell.dataset.period = String(period);
 			cell.addEventListener("dragover", allowDrop);
+			cell.addEventListener("dragleave", handleDragLeave);
 			cell.addEventListener("drop", handleDrop);
 			grid.appendChild(cell);
 		});
@@ -217,8 +218,18 @@ function renderDesktopSchedule() {
 		card.style.gridRow = `${block.periodStart + 1} / span ${block.length}`;
 		card.style.gridColumn = dayIdx + 2;
 		card.style.zIndex = "10";
+
+		// Ensure card also acts as a drop zone for swapping
+		card.addEventListener("dragover", allowDrop);
+		card.addEventListener("dragleave", handleDragLeave);
+		card.addEventListener("drop", handleDrop);
+
 		grid.appendChild(card);
 	});
+}
+
+function handleDragLeave(event) {
+	event.currentTarget.classList.remove("drag-over");
 }
 
 function renderMobileSchedule() {
@@ -258,6 +269,8 @@ function createBlockCard(block) {
 	card.className = `block-card ${isDouble ? "double-period" : ""}`;
 	card.draggable = true;
 	card.dataset.id = block.id;
+	card.dataset.day = block.day;
+	card.dataset.period = block.periodStart;
 	card.addEventListener("dragstart", handleDragStart);
 	card.addEventListener("dragend", handleDragEnd);
 
@@ -284,13 +297,11 @@ function createBlockCard(block) {
 function handleDragStart(event) {
 	state.draggedId = event.currentTarget.dataset.id;
 	event.dataTransfer.setData("text/plain", state.draggedId);
-	document.body.classList.add("dragging-active");
 }
 
 function handleDragEnd() {
 	state.draggedId = null;
 	document.querySelectorAll(".drag-over").forEach((element) => element.classList.remove("drag-over"));
-	document.body.classList.remove("dragging-active");
 }
 
 function allowDrop(event) {
@@ -314,7 +325,8 @@ async function handleDrop(event) {
 		// SWAP LOGIC: Find if there's a block already in the target cell (matching group)
 		const targetBlock = state.blocks.find(b =>
 			b.day === targetDay &&
-			b.periodStart === targetPeriod &&
+			targetPeriod >= b.periodStart &&
+			targetPeriod < b.periodStart + b.length &&
 			b.group === block.group &&
 			b.id !== block.id
 		);
@@ -323,26 +335,23 @@ async function handleDrop(event) {
 			const originalDay = block.day;
 			const originalPeriod = block.periodStart;
 
-			// Swap IDs/Positions by moving one to a temporary "buffer" day (SUN) to avoid collision
-			const updateTemp = { ...targetBlock, day: "SUN", periodStart: 1 };
-			const updateDragged = { ...block, day: targetDay, periodStart: targetPeriod };
-			const updateDisplaced = { ...targetBlock, day: originalDay, periodStart: originalPeriod };
-
 			try {
-				await authorizedFetch(`/api/blocks/${targetBlock.id}`, {
-					method: "PUT",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify(updateTemp),
-				});
+				// Swap by using DELETE and POST/PUT to bypass collision checks
+				// Perform all operations, then reload once
+				await authorizedFetch(`/api/blocks/${targetBlock.id}`, { method: "DELETE" });
+
+				const updateDragged = { ...block, day: targetDay, periodStart: targetPeriod };
 				await authorizedFetch(`/api/blocks/${block.id}`, {
 					method: "PUT",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify(updateDragged),
 				});
-				await authorizedFetch(`/api/blocks/${targetBlock.id}`, {
-					method: "PUT",
+
+				const createNew = { ...targetBlock, id: null, day: originalDay, periodStart: originalPeriod };
+				await authorizedFetch("/api/blocks", {
+					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify(updateDisplaced),
+					body: JSON.stringify(createNew),
 				});
 			} catch (e) {
 				console.error("Swap failed", e);
