@@ -175,22 +175,24 @@ function handleAdminInput(event) {
 
 function handleAdminClick(event) {
 	const target = event.target;
-	if (target.matches("#resetButton")) resetSampleSchedule();
-	if (target.matches("#clearAllButton")) clearAllClasses();
-	if (target.matches("#exportButton")) exportSchedule();
-	if (target.matches("#addEventButton")) addEventRow();
-	if (target.matches("[data-action='delete-event']")) deleteEventRow(Number(target.dataset.eventIndex));
-	if (target.matches("[data-action='toggle-description']")) {
-		const idx = target.dataset.eventIndex;
+	if (target.closest("#resetButton")) resetSampleSchedule();
+	if (target.closest("#clearAllButton")) clearAllClasses();
+	if (target.closest("#exportButton")) exportSchedule();
+	if (target.closest("#addEventButton")) addEventRow();
+	if (target.closest("[data-action='delete-event']")) deleteEventRow(Number(target.closest("[data-action='delete-event']").dataset.eventIndex));
+	if (target.closest("[data-action='toggle-description']")) {
+		const btn = target.closest("[data-action='toggle-description']");
+		const idx = btn.dataset.eventIndex;
 		const el = document.querySelector(`.desc-container[data-event-index="${idx}"]`);
 		if (el) {
 			el.classList.toggle('hidden');
-			target.textContent = el.classList.contains('hidden') ? 'Add description' : 'Hide description';
+			btn.textContent = el.classList.contains('hidden') ? 'Add description' : 'Hide description';
 		}
 	}
-		if (target.matches("[data-action='toggle-double']")) {
-		const idx = Number(target.dataset.periodIndex);
-		const key = target.dataset.blockKey;
+	if (target.closest("[data-action='toggle-double']")) {
+		const btn = target.closest("[data-action='toggle-double']");
+		const idx = Number(btn.dataset.periodIndex);
+		const key = btn.dataset.blockKey;
 		const schedule = state.schedule;
 		const block = schedule.periods[idx][key];
 		const isNowDouble = Number(block.length) === 1;
