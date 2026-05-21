@@ -230,6 +230,27 @@ a { color: inherit; text-decoration: none; }
 	background: rgba(255, 255, 255, 0.02);
 	border-radius: 24px;
 	border: 1px solid var(--line);
+	position: relative;
+}
+
+/* Today Highlight Column */
+.week-day-header.is-today,
+.week-cell.is-today {
+	background: rgba(45, 212, 191, 0.04);
+	position: relative;
+}
+
+.week-day-header.is-today {
+	border-bottom: 2px solid var(--accent);
+	border-radius: 12px 12px 0 0;
+}
+
+.week-cell.is-today:last-child {
+	border-radius: 0 0 12px 12px;
+}
+
+.week-day-header.is-today .week-day-name {
+	color: var(--accent);
 }
 
 .week-day-header {

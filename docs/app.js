@@ -1,4 +1,4 @@
-// Version 5.0 - Multi-Week & Dynamic Logic
+// Version 5.1 - Multi-Week, Admin Week Editor & UI Highlights
 
 const firebaseConfig = {
 	apiKey: "AIzaSyBchrPCAav08CfPBKSTmaHvMrEoid2NxEU",
@@ -58,6 +58,7 @@ const state = {
 	darkMode: true,
 	selectedCourse: null,
 	publicView: 'week',
+	adminView: 'day', // 'day' or 'week'
 	currentWeekIdx: 0,
 	currentDay: "MON",
 };
@@ -93,15 +94,10 @@ function applyAutoMerge(schedule) {
 				['x', 'y'].forEach(key => {
 					const b1 = periods[idx][key];
 					const b2 = periods[idx+1][key];
-
 					const prev = idx > 0 ? periods[idx-1] : null;
 					if (prev && Number(prev[key].length) === 2) return;
-
 					if (b1.course && b1.course !== "None" && b1.course === b2.course) {
-						b1.length = 2;
-						b2.teacher = b1.teacher;
-						b2.room = b1.room;
-						b2.length = 1;
+						b1.length = 2; b2.teacher = b1.teacher; b2.room = b1.room; b2.length = 1;
 					} else if (Number(b1.length) === 2) {
 						if (b1.course !== b2.course) b1.length = 1;
 					}
@@ -136,18 +132,12 @@ function getWeekDateRanges() {
 	const day = now.getDay();
 	const diff = now.getDate() - day + (day === 0 ? -6 : 1);
 	const monday = new Date(now.setDate(diff));
-
-	const format = (d) => {
-		const month = d.toLocaleString('default', { month: 'short' });
-		return `${month} ${d.getDate()}`;
-	};
-
+	const format = (d) => `${d.toLocaleString('default', { month: 'short' })} ${d.getDate()}`;
 	const getRange = (offset) => {
 		const start = new Date(monday); start.setDate(monday.getDate() + offset);
 		const end = new Date(monday); end.setDate(monday.getDate() + offset + 4);
 		return `${format(start)} - ${format(end)}`;
 	};
-
 	return [getRange(0), getRange(7)];
 }
 
@@ -155,7 +145,6 @@ function renderPublicPage() {
 	updateViewToggle();
 	const container = document.getElementById("publicSchedule");
 	let html = renderLiveTimer();
-
 	if (state.publicView === 'day') {
 		const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 		let today = days[new Date().getDay()];
@@ -171,17 +160,22 @@ function renderPublicPage() {
 
 function renderFullWeekView() {
 	const weekData = state.schedule.weeks[state.currentWeekIdx];
+	const daysEnum = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+	const todayDay = daysEnum[new Date().getDay()];
+
 	const renderGroup = (key, label) => {
 		let h = `<div class="week-group-section"><h3 class="week-group-title ${key}">${label}</h3><div class="full-week-grid"><div class="week-corner"></div>`;
 		DAYS.forEach(day => {
-			h += `<div class="week-day-header"><div class="week-day-name">${day}</div></div>`;
+			const isToday = day === todayDay;
+			h += `<div class="week-day-header ${isToday ? 'is-today' : ''}"><div class="week-day-name">${day}</div></div>`;
 		});
 		[1, 2, 3, 4].forEach(pNum => {
 			h += `<div class="week-period-row"><div class="week-period-label">P${pNum}</div>`;
 			DAYS.forEach(day => {
+				const isToday = day === todayDay;
 				const block = weekData[day][pNum-1][key];
 				const empty = block.course === "None";
-				h += `<div class="week-cell ${key} ${empty ? 'empty' : 'has-class'}">
+				h += `<div class="week-cell ${key} ${empty ? 'empty' : 'has-class'} ${isToday ? 'is-today' : ''}">
 					${empty ? '' : `<div class="week-course">${escapeHtml(block.course)}</div><div class="week-room">Rm ${escapeHtml(block.room)}</div>`}
 				</div>`;
 			});
@@ -193,14 +187,14 @@ function renderFullWeekView() {
 }
 
 function renderTable(periods, isAdmin) {
-	let html = `<table class="schedule-table"><thead><tr><th>Period</th><th>Block X</th><th>Block Y</th></tr></thead><tbody>`;
+	let html = `<table class="schedule-table ${isAdmin ? 'admin-table' : ''}"><thead><tr><th>Period</th><th>Block X</th><th>Block Y</th></tr></thead><tbody>`;
 	periods.forEach((p, idx) => {
 		const prev = idx > 0 ? periods[idx-1] : null;
 		const skipX = prev && Number(prev.x.length) === 2;
 		const skipY = prev && Number(prev.y.length) === 2;
 		html += `<tr><td class="period-col"><span class="period-label">P${p.period}</span></td>
-			${skipX ? '' : `<td class="${isAdmin ? 'block-col' : ''}" ${Number(p.x.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.x, 'x', idx) : renderPublicBlock(p.x)}</td>`}
-			${skipY ? '' : `<td class="${isAdmin ? 'block-col' : ''}" ${Number(p.y.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.y, 'y', idx) : renderPublicBlock(p.y)}</td>`}
+			${skipX ? '' : `<td class="block-col" data-period-index="${idx}" data-block="x" ${Number(p.x.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.x, 'x', idx) : renderPublicBlock(p.x)}</td>`}
+			${skipY ? '' : `<td class="block-col" data-period-index="${idx}" data-block="y" ${Number(p.y.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.y, 'y', idx) : renderPublicBlock(p.y)}</td>`}
 		</tr>`;
 	});
 	return html + `</tbody></table>`;
@@ -216,16 +210,49 @@ function renderAdminPage() {
 	const heroTitle = document.querySelector(".hero h1");
 	if (heroTitle && user) heroTitle.textContent = `Editor: ${user.name}`;
 
+	document.getElementById("adminDayViewBtn")?.classList.toggle("active", state.adminView === 'day');
+	document.getElementById("adminWeekViewBtn")?.classList.toggle("active", state.adminView === 'week');
+	document.getElementById("adminDaySelect")?.closest('.admin-nav-group')?.classList.toggle('hidden', state.adminView === 'week');
+
 	const wSelect = document.getElementById("adminWeekSelect");
 	if (wSelect) wSelect.value = state.currentWeekIdx;
 	const dSelect = document.getElementById("adminDaySelect");
 	if (dSelect) dSelect.value = state.currentDay;
 
-	document.getElementById("adminSchedule").innerHTML = renderTable(state.schedule.weeks[state.currentWeekIdx][state.currentDay], true);
+	const container = document.getElementById("adminSchedule");
+	if (state.adminView === 'day') {
+		container.innerHTML = renderTable(state.schedule.weeks[state.currentWeekIdx][state.currentDay], true);
+	} else {
+		container.innerHTML = renderAdminWeekGrid();
+	}
+
 	document.getElementById("adminClassCards").innerHTML = renderClassCards();
 	document.getElementById("eventsEditor").innerHTML = renderEventsEditor(state.schedule);
 	updateSaveStatus();
 	setupDragAndDrop();
+}
+
+function renderAdminWeekGrid() {
+	const weekData = state.schedule.weeks[state.currentWeekIdx];
+	let h = `<div class="multi-week-container"><div class="week-group-section"><div class="full-week-grid admin-week-grid"><div class="week-corner"></div>`;
+	DAYS.forEach(day => h += `<div class="week-day-header"><div class="week-day-name">${day}</div></div>`);
+	[1, 2, 3, 4].forEach(pNum => {
+		h += `<div class="week-period-row"><div class="week-period-label">P${pNum}</div>`;
+		DAYS.forEach(day => {
+			const bx = weekData[day][pNum-1].x;
+			const by = weekData[day][pNum-1].y;
+			h += `<div class="week-cell admin-cell">
+				<div class="week-sub-cell x ${bx.course==='None'?'empty':'has-class'}" data-day="${day}" data-period-index="${pNum-1}" data-block="x">
+					<span class="sub-label">X</span>${bx.course==='None'?'':bx.course}
+				</div>
+				<div class="week-sub-cell y ${by.course==='None'?'empty':'has-class'}" data-day="${day}" data-period-index="${pNum-1}" data-block="y">
+					<span class="sub-label">Y</span>${by.course==='None'?'':by.course}
+				</div>
+			</div>`;
+		});
+		h += `</div>`;
+	});
+	return h + `</div></div></div>`;
 }
 
 function renderAdminBlock(block, key, idx) {
@@ -252,62 +279,63 @@ function renderAdminBlock(block, key, idx) {
 function setupDragAndDrop() {
 	const cards = document.querySelectorAll('.draggable-card');
 	const tableBlocks = document.querySelectorAll('.admin-block-cell[draggable="true"]');
-	const zones = document.querySelectorAll('.admin-table td:not(.period-col)');
+	const dayZones = document.querySelectorAll('.admin-table td.block-col');
+	const weekZones = document.querySelectorAll('.week-sub-cell');
 
-	cards.forEach(c => {
-		c.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', 'lib:' + c.dataset.course));
-		c.addEventListener('click', () => {
-			document.querySelectorAll('.draggable-card').forEach(card => card.classList.remove('active-selection'));
-			if (state.selectedCourse === c.dataset.course) state.selectedCourse = null;
-			else { state.selectedCourse = c.dataset.course; c.classList.add('active-selection'); }
-		});
-	});
+	cards.forEach(c => c.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', 'lib:' + c.dataset.course)));
+	document.querySelectorAll('.draggable-card').forEach(c => c.addEventListener('click', () => {
+		document.querySelectorAll('.draggable-card').forEach(card => card.classList.remove('active-selection'));
+		if (state.selectedCourse === c.dataset.course) state.selectedCourse = null;
+		else { state.selectedCourse = c.dataset.course; c.classList.add('active-selection'); }
+	}));
 
-	tableBlocks.forEach(b => {
-		b.addEventListener('dragstart', e => {
-			const info = { idx: b.dataset.periodIndex, key: b.dataset.blockKey };
-			e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(info));
-		});
-	});
+	tableBlocks.forEach(b => b.addEventListener('dragstart', e => {
+		const info = { day: state.currentDay, idx: b.dataset.periodIndex, key: b.dataset.blockKey };
+		e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(info));
+	}));
 
-	zones.forEach(z => {
-		const targetKey = z.cellIndex === 1 ? 'x' : 'y';
-		const targetIdx = z.parentElement.rowIndex - 1;
+	const handleDrop = (e, zone, d, idx, key) => {
+		e.preventDefault(); zone.classList.remove('drag-over');
+		handleSelection(idx, key, e.dataTransfer.getData('text/plain'), e, zone, d);
+	};
 
+	dayZones.forEach(z => {
+		const k = z.dataset.block, i = Number(z.dataset.periodIndex);
 		z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
 		z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
-		z.addEventListener('drop', e => {
-			e.preventDefault(); z.classList.remove('drag-over');
-			const raw = e.dataTransfer.getData('text/plain');
-			handleSelection(targetIdx, targetKey, raw, e, z);
+		z.addEventListener('drop', e => handleDrop(e, z, state.currentDay, i, k));
+		z.addEventListener('click', e => {
+			if (!e.target.closest('input,button') && state.selectedCourse) handleSelection(i, k, 'lib:' + state.selectedCourse, e, z, state.currentDay);
 		});
+	});
 
-		z.addEventListener('click', (e) => {
-			if (e.target.closest('input') || e.target.closest('button')) return;
-			if (state.selectedCourse) handleSelection(targetIdx, targetKey, 'lib:' + state.selectedCourse, e, z);
-		});
+	weekZones.forEach(z => {
+		const d = z.dataset.day, i = Number(z.dataset.periodIndex), k = z.dataset.block;
+		z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
+		z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
+		z.addEventListener('drop', e => handleDrop(e, z, d, i, k));
+		z.addEventListener('click', () => { if (state.selectedCourse) handleSelection(i, k, 'lib:' + state.selectedCourse, null, z, d); });
 	});
 }
 
-function handleSelection(tIdx, key, raw, event, zone) {
+function handleSelection(tIdx, key, raw, event, zone, day) {
 	if (!raw) return;
-	const week = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
-	if (Number(week[tIdx][key].length) === 2 && event) {
+	const week = state.schedule.weeks[state.currentWeekIdx];
+	if (Number(week[day][tIdx][key].length) === 2 && event) {
 		const rect = zone.getBoundingClientRect();
 		if ((event.clientY - rect.top) > rect.height / 2) tIdx++;
 	}
 
 	if (raw.startsWith('lib:')) {
 		const course = raw.replace('lib:', '');
-		const block = week[tIdx][key];
+		const block = week[day][tIdx][key];
 		block.course = course;
 		const lib = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
 		block.teacher = lib.teacher; block.room = lib.room; block.length = 1;
 	} else if (raw.startsWith('table:')) {
-		const source = JSON.parse(raw.replace('table:', ''));
-		if (source.idx == tIdx && source.key == key) return;
-		const sBlock = week[source.idx][source.key];
-		const tBlock = week[tIdx][key];
+		const src = JSON.parse(raw.replace('table:', ''));
+		const sBlock = week[src.day][src.idx][src.key];
+		const tBlock = week[day][tIdx][key];
 		const temp = { ...sBlock };
 		sBlock.course = tBlock.course; sBlock.teacher = tBlock.teacher; sBlock.room = tBlock.room; sBlock.length = 1;
 		tBlock.course = temp.course; tBlock.teacher = temp.teacher; tBlock.room = temp.room; tBlock.length = 1;
@@ -316,32 +344,24 @@ function handleSelection(tIdx, key, raw, event, zone) {
 }
 
 function initAdminPage() {
-	if (!isAuthenticated()) {
-		document.body.classList.add('auth-mode');
-		document.getElementById("loginPanel").hidden = false;
-		document.getElementById("adminApp").hidden = true;
-		document.getElementById("adminLoginForm").addEventListener("submit", handleAdminLogin);
-		return;
-	}
+	if (!isAuthenticated()) { document.body.classList.add('auth-mode'); return; }
 	document.body.classList.remove('auth-mode');
-	document.getElementById("loginPanel").hidden = true;
-	document.getElementById("adminApp").hidden = false;
+	document.getElementById("loginPanel").hidden = true; document.getElementById("adminApp").hidden = false;
 
-	renderAdminPage();
-	setupSettingsMenu();
+	const daysEnum = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+	const today = daysEnum[new Date().getDay()];
+	if (DAYS.includes(today)) state.currentDay = today;
+
+	document.getElementById("adminDayViewBtn")?.addEventListener("click", () => { state.adminView = 'day'; renderAdminPage(); });
+	document.getElementById("adminWeekViewBtn")?.addEventListener("click", () => { state.adminView = 'week'; renderAdminPage(); });
+	document.getElementById("adminWeekSelect")?.addEventListener("change", e => { state.currentWeekIdx = Number(e.target.value); renderAdminPage(); });
+	document.getElementById("adminDaySelect")?.addEventListener("change", e => { state.currentDay = e.target.value; renderAdminPage(); });
+	document.getElementById("adminLoginForm").addEventListener("submit", handleAdminLogin);
 	document.getElementById("logoutButton").addEventListener("click", handleLogout);
-	const adminApp = document.getElementById("adminApp");
-	adminApp.addEventListener("change", handleAdminInput);
-	adminApp.addEventListener("click", handleAdminClick);
 
-	document.getElementById("adminWeekSelect")?.addEventListener("change", (e) => {
-		state.currentWeekIdx = Number(e.target.value);
-		renderAdminPage();
-	});
-	document.getElementById("adminDaySelect")?.addEventListener("change", (e) => {
-		state.currentDay = e.target.value;
-		renderAdminPage();
-	});
+	const app = document.getElementById("adminApp");
+	app.addEventListener("change", handleAdminInput); app.addEventListener("click", handleAdminClick);
+	renderAdminPage(); setupSettingsMenu();
 }
 
 function handleAdminClick(event) {
@@ -358,19 +378,13 @@ function handleAdminClick(event) {
 	}
 	if (target.closest("[data-action='toggle-double']")) {
 		const btn = target.closest("[data-action='toggle-double']");
-		const idx = Number(btn.dataset.periodIndex);
-		const key = btn.dataset.blockKey;
+		const idx = Number(btn.dataset.periodIndex), key = btn.dataset.blockKey;
 		const periods = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
 		const block = periods[idx][key];
-		const isNowDouble = Number(block.length) === 1;
-		if (isNowDouble) {
-			block.length = 2;
-			if (periods[idx + 1]) {
-				const next = periods[idx + 1][key];
-				next.course = block.course; next.teacher = block.teacher; next.room = block.room; next.length = 1;
-			}
-		} else {
-			block.length = 1;
+		block.length = Number(block.length) === 1 ? 2 : 1;
+		if (Number(block.length) === 2 && periods[idx+1]) {
+			const next = periods[idx+1][key];
+			next.course = block.course; next.teacher = block.teacher; next.room = block.room; next.length = 1;
 		}
 		saveSchedule(state.schedule);
 	}
