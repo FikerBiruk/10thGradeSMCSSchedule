@@ -291,15 +291,21 @@ function renderFullWeekGrid(schedule) {
 			<div class="week-period-label">P${period}</div>
 			${[0, 1, 2, 3, 4].map(dayIdx => {
 				const pData = schedule.periods[period - 1];
-				const block = pData.x;
-				const isEmpty = block.course === "None";
+				const bx = pData?.x;
+				const by = pData?.y;
+				const xEmpty = !bx || bx.course === "None";
+				const yEmpty = !by || by.course === "None";
 
 				return `
-					<div class="week-cell ${isEmpty ? '' : 'has-class'}">
-						${isEmpty ? '' : `
-							<div class="week-course">${escapeHtml(block.course)}</div>
-							<div class="week-room">${escapeHtml(block.room)}</div>
-						`}
+					<div class="week-cell">
+						<div class="week-sub-cell x ${xEmpty ? 'empty' : 'has-class'}">
+							<span class="sub-label">X</span>
+							${xEmpty ? '' : `<div class="week-course">${escapeHtml(bx.course)}</div>`}
+						</div>
+						<div class="week-sub-cell y ${yEmpty ? 'empty' : 'has-class'}">
+							<span class="sub-label">Y</span>
+							${yEmpty ? '' : `<div class="week-course">${escapeHtml(by.course)}</div>`}
+						</div>
 					</div>
 				`;
 			}).join('')}

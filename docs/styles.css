@@ -180,34 +180,53 @@ a { color: inherit; text-decoration: none; }
 }
 
 .week-cell {
-	background: rgba(255, 255, 255, 0.03);
+	background: var(--line);
 	border: 1px solid var(--line);
 	border-radius: 16px;
-	padding: 12px;
-	min-height: 90px;
+	min-height: 100px;
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 1px;
+	overflow: hidden;
+	transition: transform 0.2s ease;
+}
+
+.week-sub-cell {
+	background: var(--bg-2);
+	padding: 8px;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
 	text-align: center;
-	gap: 4px;
-	transition: transform 0.2s ease, background 0.2s ease;
+	gap: 2px;
+	position: relative;
 }
 
-.week-cell.has-class {
+.week-sub-cell.has-class.x {
 	background: linear-gradient(180deg, rgba(45, 212, 191, 0.08), transparent);
-	border-color: rgba(45, 212, 191, 0.2);
 }
 
-.week-cell.has-class:hover {
-	background: linear-gradient(180deg, rgba(45, 212, 191, 0.12), rgba(45, 212, 191, 0.03));
-	transform: translateY(-2px);
+.week-sub-cell.has-class.y {
+	background: linear-gradient(180deg, rgba(56, 189, 248, 0.08), transparent);
+}
+
+.sub-label {
+	position: absolute;
+	top: 4px;
+	left: 4px;
+	font-size: 0.6rem;
+	font-weight: 900;
+	color: var(--muted-2);
+	opacity: 0.5;
+	text-transform: uppercase;
 }
 
 .week-course {
-	font-size: 1rem;
+	font-size: 0.9rem;
 	font-weight: 800;
 	color: var(--text);
+	word-break: break-word;
 }
 
 .week-room {
