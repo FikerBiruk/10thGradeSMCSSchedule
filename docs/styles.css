@@ -174,10 +174,19 @@ a { color: inherit; text-decoration: none; }
 	display: flex; flex-direction: column; gap: 12px; height: 100%; position: relative;
 	background: rgba(255, 255, 255, 0.03); padding: 15px; border-radius: 15px;
 	align-items: center; justify-content: center; text-align: center;
+	transition: all 0.2s ease;
+	border: 2px solid transparent;
 }
-.admin-block-cell.is-double { justify-content: center; padding: 40px 0; }
-.room-input { width: 100%; padding: 8px 12px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; }
-.block-actions { display: flex; gap: 8px; }
+
+/* Red outline for human error/conflicts */
+.admin-block-cell.has-conflict {
+	border-color: var(--danger) !important;
+	background: rgba(244, 63, 94, 0.1);
+	box-shadow: 0 0 15px rgba(244, 63, 94, 0.2);
+}
+
+.course-name { font-size: 1.4rem; font-weight: 800; color: var(--text); }
+.teacher-name { font-size: 1.1rem; color: var(--muted); font-weight: 600; }
 
 .toggle-double-btn {
 	background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-radius: 8px;

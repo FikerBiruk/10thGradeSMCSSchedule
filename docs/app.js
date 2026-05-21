@@ -275,13 +275,33 @@ function renderAdminTable(schedule) {
 function renderAdminBlock(block, key, idx) {
 	const isDouble = Number(block.length) === 2;
 	const canDouble = idx < 3;
-	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''}">
+	const inputId = `room-edit-${idx}-${key}`;
+
+	// Check for conflicts (same course appearing in different non-adjacent periods in X or Y)
+	const schedule = state.schedule;
+	let hasConflict = false;
+	if (block.course !== "None") {
+		schedule.periods.forEach((p, pIdx) => {
+			if (pIdx === idx) return;
+			if (p[key].course === block.course) {
+				// If they are not adjacent, it's a conflict
+				if (Math.abs(pIdx - idx) > 1) hasConflict = true;
+				// If they are adjacent but not marked as a double, it's a conflict
+				const isAdjacent = Math.abs(pIdx - idx) === 1;
+				if (isAdjacent && Number(block.length) !== 2 && Number(p[key].length) !== 2) {
+					hasConflict = true;
+				}
+			}
+		});
+	}
+
+	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''} ${hasConflict ? 'has-conflict' : ''}" draggable="true" data-source="table" data-period-index="${idx}" data-block-key="${key}">
 		<div class="block-info">
 			<div class="course-name">${escapeHtml(block.course)}</div>
 			<div class="teacher-name">${escapeHtml(block.teacher)}</div>
 		</div>
 		<div class="block-controls">
-			<input type="text" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}" placeholder="Room">
+			<input type="text" id="${inputId}" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}" placeholder="Room" autocomplete="off">
 			<div class="block-actions">
 				${canDouble ? `<button class="toggle-double-btn ${isDouble ? 'active' : ''}" data-action="toggle-double" data-period-index="${idx}" data-block-key="${key}">${isDouble ? 'Double Period ON' : 'Make Double'}</button>` : ''}
 			</div>
@@ -296,18 +316,16 @@ function renderClassCards() {
 
 function setupDragAndDrop() {
 	const cards = document.querySelectorAll('.draggable-card');
+	const tableBlocks = document.querySelectorAll('.admin-block-cell[draggable="true"]');
 	const zones = document.querySelectorAll('.admin-table .block-col');
 
-	// CLICK-TO-ASSIGN logic (Much easier than dragging)
+	// Library Card Dragging
 	cards.forEach(c => {
-		// Handle Drag
 		c.addEventListener('dragstart', e => {
-			e.dataTransfer.setData('text/plain', c.dataset.course);
+			e.dataTransfer.setData('text/plain', 'library:' + c.dataset.course);
 			c.classList.add('dragging');
 		});
 		c.addEventListener('dragend', () => c.classList.remove('dragging'));
-
-		// Handle Click
 		c.addEventListener('click', () => {
 			if (state.selectedCourse === c.dataset.course) {
 				state.selectedCourse = null;
@@ -320,46 +338,80 @@ function setupDragAndDrop() {
 		});
 	});
 
+	// Table Block Dragging (for Swapping/Rearranging)
+	tableBlocks.forEach(b => {
+		b.addEventListener('dragstart', e => {
+			const info = { idx: b.dataset.periodIndex, key: b.dataset.blockKey };
+			e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(info));
+			b.classList.add('dragging');
+		});
+		b.addEventListener('dragend', () => b.classList.remove('dragging'));
+	});
+
 	zones.forEach(z => {
-		// Drag & Drop zones
 		z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
 		z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
 		z.addEventListener('drop', e => {
 			e.preventDefault();
 			z.classList.remove('drag-over');
-			const course = e.dataTransfer.getData('text/plain');
-			handleSelection(z, course, e);
+			const rawData = e.dataTransfer.getData('text/plain');
+			handleSelection(z, rawData, e);
 		});
 
-		// Click to assign
 		z.addEventListener('click', (e) => {
-			// Don't assign if they clicked an input or button
 			if (e.target.closest('input') || e.target.closest('button')) return;
-
 			if (state.selectedCourse) {
-				handleSelection(z, state.selectedCourse, e);
+				handleSelection(z, 'library:' + state.selectedCourse, e);
 			}
 		});
 	});
 }
 
-function handleSelection(zone, course, event) {
-	if (!course) return;
+function handleSelection(zone, rawData, event) {
+	if (!rawData) return;
 	let targetIdx = Number(zone.dataset.periodIndex);
 	const targetKey = zone.dataset.block;
+	const schedule = state.schedule;
 
-	// Check if we are interacting with a double period
-	const block = state.schedule.periods[targetIdx][targetKey];
-	if (Number(block.length) === 2 && event) {
+	// Check if dropping into the bottom half of a double period
+	const existingTargetBlock = schedule.periods[targetIdx][targetKey];
+	if (Number(existingTargetBlock.length) === 2 && event) {
 		const rect = zone.getBoundingClientRect();
-		const relativeY = event.clientY - rect.top;
-		// If clicked/dropped in the bottom half, target the next period
-		if (relativeY > rect.height / 2) {
-			targetIdx = targetIdx + 1;
+		if ((event.clientY - rect.top) > rect.height / 2) {
+			targetIdx++;
 		}
 	}
 
-	assignCourseToZone(targetIdx, targetKey, course);
+	if (rawData.startsWith('library:')) {
+		// Replace current slot with library selection
+		const course = rawData.replace('library:', '');
+		assignCourseToZone(targetIdx, targetKey, course);
+	} else if (rawData.startsWith('table:')) {
+		// SWAP Logic
+		const source = JSON.parse(rawData.replace('table:', ''));
+		const sIdx = Number(source.idx);
+		const sKey = source.key;
+
+		if (sIdx === targetIdx && sKey === targetKey) return;
+
+		const sBlock = schedule.periods[sIdx][sKey];
+		const tBlock = schedule.periods[targetIdx][targetKey];
+
+		// Displace: Move target data to source slot, and source data to target slot
+		const temp = { ...sBlock };
+
+		sBlock.course = tBlock.course;
+		sBlock.teacher = tBlock.teacher;
+		sBlock.room = tBlock.room;
+		sBlock.length = 1; // Reset lengths during swap to prevent glitches
+
+		tBlock.course = temp.course;
+		tBlock.teacher = temp.teacher;
+		tBlock.room = temp.room;
+		tBlock.length = 1;
+
+		saveSchedule(schedule);
+	}
 }
 
 function assignCourseToZone(idx, key, course) {
