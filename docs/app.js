@@ -253,16 +253,49 @@ function renderPublicPage() {
 	const schedule = state.schedule;
 	const container = document.getElementById("publicSchedule");
 
-	// Ensure buttons match state
 	updateViewToggle();
 
+	let html = renderLiveTimer(); // New Live Status Header
+
 	if (state.publicView === 'day') {
-		container.innerHTML = renderPublicTable(schedule);
+		html += renderPublicTable(schedule);
 	} else {
-		container.innerHTML = renderFullWeekGrid(schedule);
+		html += renderFullWeekGrid(schedule);
 	}
 
+	container.innerHTML = html;
 	document.getElementById("publicEvents").innerHTML = renderEventFeed(schedule);
+}
+
+function renderLiveTimer() {
+	const now = new Date();
+	const day = now.getDay();
+	const time = now.getHours() * 60 + now.getMinutes();
+
+	if (day === 0 || day === 6) return `<div class="live-status-card weekend">Weekend Mode</div>`;
+
+	const schedule = [
+		{ p: 1, start: 480, end: 570 },  // 8:00 - 9:30
+		{ p: 2, start: 585, end: 675 },  // 9:45 - 11:15
+		{ p: 3, start: 735, end: 825 },  // 12:15 - 1:45
+		{ p: 4, start: 840, end: 930 }   // 2:00 - 3:30
+	];
+
+	let statusHtml = "";
+	const current = schedule.find(s => time >= s.start && time <= s.end);
+	const next = schedule.find(s => s.start > time);
+
+	if (current) {
+		const remaining = current.end - time;
+		statusHtml = `<div class="live-status-card active">Period ${current.p} ends in ${remaining}m</div>`;
+	} else if (next) {
+		const until = next.start - time;
+		statusHtml = `<div class="live-status-card break">Break: Period ${next.p} starts in ${until}m</div>`;
+	} else {
+		statusHtml = `<div class="live-status-card off">School Day Over</div>`;
+	}
+
+	return statusHtml;
 }
 
 function renderFullWeekGrid(schedule) {
@@ -277,43 +310,48 @@ function renderFullWeekGrid(schedule) {
 		return d.getDate();
 	});
 
-	let html = `<div class="full-week-grid">
-		<div class="week-corner"></div>
-		${dayLabels.map((label, i) => `
-			<div class="week-day-header">
-				<div class="week-day-name">${label}</div>
-				<div class="week-day-date">${weekDates[i]}</div>
-			</div>
-		`).join('')}`;
-
-	[1, 2, 3, 4].forEach(period => {
-		html += `<div class="week-period-row">
-			<div class="week-period-label">P${period}</div>
-			${[0, 1, 2, 3, 4].map(dayIdx => {
-				const pData = schedule.periods[period - 1];
-				const bx = pData?.x;
-				const by = pData?.y;
-				const xEmpty = !bx || bx.course === "None";
-				const yEmpty = !by || by.course === "None";
-
-				return `
-					<div class="week-cell">
-						<div class="week-sub-cell x ${xEmpty ? 'empty' : 'has-class'}">
-							<span class="sub-label">X</span>
-							${xEmpty ? '' : `<div class="week-course">${escapeHtml(bx.course)}</div>`}
-						</div>
-						<div class="week-sub-cell y ${yEmpty ? 'empty' : 'has-class'}">
-							<span class="sub-label">Y</span>
-							${yEmpty ? '' : `<div class="week-course">${escapeHtml(by.course)}</div>`}
-						</div>
+	const renderTable = (groupKey, label) => {
+		let html = `<div class="week-group-section">
+			<h3 class="week-group-title ${groupKey.toLowerCase()}">${label}</h3>
+			<div class="full-week-grid">
+				<div class="week-corner"></div>
+				${dayLabels.map((dayLabel, i) => `
+					<div class="week-day-header">
+						<div class="week-day-name">${dayLabel}</div>
+						<div class="week-day-date">${weekDates[i]}</div>
 					</div>
-				`;
-			}).join('')}
-		</div>`;
-	});
+				`).join('')}`;
 
-	html += `</div>`;
-	return html;
+		[1, 2, 3, 4].forEach(period => {
+			html += `<div class="week-period-row">
+				<div class="week-period-label">P${period}</div>
+				${[0, 1, 2, 3, 4].map(dayIdx => {
+					const pData = schedule.periods[period - 1];
+					const block = pData ? pData[groupKey] : null;
+					const isEmpty = !block || block.course === "None";
+
+					return `
+						<div class="week-cell ${groupKey.toLowerCase()} ${isEmpty ? 'empty' : 'has-class'}">
+							${isEmpty ? '' : `
+								<div class="week-course">${escapeHtml(block.course)}</div>
+								<div class="week-room">Rm ${escapeHtml(block.room)}</div>
+							`}
+						</div>
+					`;
+				}).join('')}
+			</div>`;
+		});
+
+		html += `</div></div>`;
+		return html;
+	};
+
+	return `
+		<div class="multi-week-container">
+			${renderTable('x', 'Block X Schedule')}
+			${renderTable('y', 'Block Y Schedule')}
+		</div>
+	`;
 }
 
 function renderAdminPage() {
