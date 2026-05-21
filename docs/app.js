@@ -167,9 +167,33 @@ function updateViewToggle() {
 	const w0 = document.getElementById("week0Btn");
 	const w1 = document.getElementById("week1Btn");
 	if (w0 && w1) {
+		const ranges = getWeekDateRanges();
+		w0.textContent = ranges[0];
+		w1.textContent = ranges[1];
 		w0.classList.toggle("active", state.currentWeekIdx === 0);
 		w1.classList.toggle("active", state.currentWeekIdx === 1);
 	}
+}
+
+function getWeekDateRanges() {
+	const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+	const now = new Date();
+	const currentDay = now.getDay();
+	const first = now.getDate() - (currentDay === 0 ? 6 : currentDay - 1); // Get Monday
+
+	const formatRange = (offset) => {
+		const monday = new Date(now);
+		monday.setDate(first + offset);
+		const friday = new Date(now);
+		friday.setDate(first + offset + 4);
+
+		const mMonth = monday.toLocaleString('default', { month: 'short' });
+		const fMonth = friday.toLocaleString('default', { month: 'short' });
+
+		return `${mMonth} ${monday.getDate()} - ${fMonth === mMonth ? '' : fMonth + ' '}${friday.getDate()}`;
+	};
+
+	return [formatRange(0), formatRange(7)];
 }
 
 function initAdminPage() {

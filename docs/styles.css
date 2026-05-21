@@ -111,6 +111,17 @@ a { color: inherit; text-decoration: none; }
 	border: 1px solid var(--line);
 }
 
+.week-selector {
+	grid-template-columns: 1fr; /* Stack buttons or make them wide */
+	gap: 4px;
+}
+
+.week-selector .toggle-btn {
+	font-size: 0.75rem;
+	padding: 10px 4px;
+	white-space: nowrap;
+}
+
 .admin-nav-group {
 	display: flex;
 	gap: 12px;
@@ -315,6 +326,17 @@ a { color: inherit; text-decoration: none; }
 	padding: 4px;
 	border-radius: 12px;
 	border: 1px solid var(--line);
+}
+
+.week-selector {
+	grid-template-columns: 1fr; /* Stack buttons or make them wide */
+	gap: 4px;
+}
+
+.week-selector .toggle-btn {
+	font-size: 0.75rem;
+	padding: 10px 4px;
+	white-space: nowrap;
 }
 
 .admin-nav-group {
