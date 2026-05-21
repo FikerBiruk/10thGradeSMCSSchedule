@@ -13,7 +13,7 @@
 
 Fixed teacher and room assignments (no longer editable):
 - **Bio** → Mr. Yu (Room 2614)
-- **CS** → Mrs. Hallisey (Room 1702)
+- **CS** → Ms. Hallisey (Room 1702)
 - **ESS** → Mr. Kingman (Room 1708)
 - **FOT** → Ms. Bayonet (Room 1620)
 
@@ -23,7 +23,7 @@ All sample data in DEFAULT_SCHEDULE updated with correct room numbers.
 ```javascript
 const COURSE_LIBRARY = {
     Bio: { teacher: "Mr. Yu", room: "2614" },
-    CS: { teacher: "Mrs. Hallisey", room: "1702" },
+    CS: { teacher: "Ms. Hallisey", room: "1702" },
     ESS: { teacher: "Mr. Kingman", room: "1708" },
     FOT: { teacher: "Ms. Bayonet", room: "1620" },
 };
@@ -253,7 +253,7 @@ Added 220+ lines of styling:
 
 **All user requirements met.** The existing project has been modified without being rewritten:
 
-- ✅ Fixed teacher/room data (Mr. Yu, Mrs. Hallisey, Mr. Kingman, Ms. Bayonet)
+- ✅ Fixed teacher/room data (Mr. Yu, Ms. Hallisey, Mr. Kingman, Ms. Bayonet)
 - ✅ Optional event descriptions (hidden by default, toggle visible)
 - ✅ Public homepage table layout with rowspan for double periods
 - ✅ Admin table editor with drag-and-drop support

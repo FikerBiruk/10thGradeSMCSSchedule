@@ -20,7 +20,7 @@ const AUTH_USER_KEY = "smcs-schedule-admin-user";
 
 const TEACHERS = {
 	"charles": { password: "SMCS", name: "Mr. Yu", course: "Bio" },
-	"hallisey": { password: "SMCS", name: "Mrs. Hallisey", course: "CS" },
+	"hallisey": { password: "SMCS", name: "Ms. Hallisey", course: "CS" },
 	"kingman": { password: "SMCS", name: "Mr. Kingman", course: "ESS" },
 	"bayonet": { password: "SMCS", name: "Ms. Bayonet", course: "FOT" }
 };
@@ -29,15 +29,15 @@ const COURSES = ["Bio", "CS", "ESS", "FOT"];
 
 const COURSE_LIBRARY = {
 	Bio: { teacher: "Mr. Yu", room: "2614" },
-	CS: { teacher: "Mrs. Hallisey", room: "1702" },
+	CS: { teacher: "Ms. Hallisey", room: "1702" },
 	ESS: { teacher: "Mr. Kingman", room: "1708" },
 	FOT: { teacher: "Ms. Bayonet", room: "1620" },
 };
 
 const DEFAULT_SCHEDULE = {
 	periods: [
-		{ period: 1, x: { course: "Bio", teacher: "Mr. Yu", room: "2614", length: 1, note: "" }, y: { course: "CS", teacher: "Mrs. Hallisey", room: "1702", length: 1, note: "" } },
-		{ period: 2, x: { course: "CS", teacher: "Mrs. Hallisey", room: "1702", length: 1, note: "" }, y: { course: "Bio", teacher: "Mr. Yu", room: "2614", length: 1, note: "" } },
+		{ period: 1, x: { course: "Bio", teacher: "Mr. Yu", room: "2614", length: 1, note: "" }, y: { course: "CS", teacher: "Ms. Hallisey", room: "1702", length: 1, note: "" } },
+		{ period: 2, x: { course: "CS", teacher: "Ms. Hallisey", room: "1702", length: 1, note: "" }, y: { course: "Bio", teacher: "Mr. Yu", room: "2614", length: 1, note: "" } },
 		{ period: 3, x: { course: "ESS", teacher: "Mr. Kingman", room: "1708", length: 1, note: "" }, y: { course: "FOT", teacher: "Ms. Bayonet", room: "1620", length: 1, note: "" } },
 		{ period: 4, x: { course: "FOT", teacher: "Ms. Bayonet", room: "1620", length: 1, note: "" }, y: { course: "ESS", teacher: "Mr. Kingman", room: "1708", length: 1, note: "" } },
 	],
@@ -50,6 +50,7 @@ const state = {
 	schedule: DEFAULT_SCHEDULE,
 	darkMode: true,
 	selectedCourse: null, // "Bio", "CS", etc.
+	publicView: 'week', // 'week' or 'day'
 };
 
 document.addEventListener("DOMContentLoaded", () => {

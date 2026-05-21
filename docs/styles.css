@@ -94,7 +94,226 @@ a { color: inherit; text-decoration: none; }
 
 .sidebar-header-box h1 { font-size: 2.2rem; line-height: 1; margin-bottom: 8px; }
 
-.sidebar-actions { position: relative; margin-top: 12px; }
+.sidebar-actions {
+	position: relative;
+	margin-top: 12px;
+	display: grid;
+	gap: 12px;
+	z-index: 6000;
+}
+
+.view-toggle {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	background: rgba(0, 0, 0, 0.2);
+	padding: 4px;
+	border-radius: 12px;
+	border: 1px solid var(--line);
+}
+
+.toggle-btn {
+	background: transparent;
+	border: none;
+	padding: 8px;
+	border-radius: 8px;
+	color: var(--muted);
+	font-weight: 700;
+	font-size: 0.85rem;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.toggle-btn.active {
+	background: var(--surface-2);
+	color: var(--accent);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-btn:hover:not(.active) {
+	color: var(--text);
+}
+
+/* Full Week Grid */
+.full-week-grid {
+	width: 100%;
+	display: grid;
+	grid-template-columns: 60px repeat(5, 1fr);
+	gap: 12px;
+	overflow-x: auto;
+	padding: 10px 0;
+}
+
+.week-day-header {
+	text-align: center;
+	padding-bottom: 16px;
+	border-bottom: 2px solid var(--line);
+}
+
+.week-day-name {
+	font-weight: 800;
+	color: var(--muted);
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	margin-bottom: 4px;
+}
+
+.week-day-date {
+	font-size: 1.4rem;
+	font-weight: 800;
+	color: var(--text);
+}
+
+.week-period-row {
+	display: contents;
+}
+
+.week-period-label {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 800;
+	color: var(--accent);
+	background: rgba(255, 255, 255, 0.02);
+	border-radius: 10px;
+	font-size: 0.9rem;
+}
+
+.week-cell {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid var(--line);
+	border-radius: 16px;
+	padding: 12px;
+	min-height: 90px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+	gap: 4px;
+	transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.week-cell.has-class {
+	background: linear-gradient(180deg, rgba(45, 212, 191, 0.08), transparent);
+	border-color: rgba(45, 212, 191, 0.2);
+}
+
+.week-cell.has-class:hover {
+	background: linear-gradient(180deg, rgba(45, 212, 191, 0.12), rgba(45, 212, 191, 0.03));
+	transform: translateY(-2px);
+}
+
+.week-course {
+	font-size: 1rem;
+	font-weight: 800;
+	color: var(--text);
+}
+
+.week-room {
+	font-size: 0.75rem;
+	color: var(--muted);
+	font-weight: 700;
+	text-transform: uppercase;
+	opacity: 0.8;
+}
+	display: grid;
+	gap: 12px;
+}
+
+.view-toggle {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	background: rgba(0, 0, 0, 0.2);
+	padding: 4px;
+	border-radius: 12px;
+	border: 1px solid var(--line);
+}
+
+.toggle-btn {
+	background: transparent;
+	border: none;
+	padding: 8px;
+	border-radius: 8px;
+	color: var(--muted);
+	font-weight: 700;
+	font-size: 0.85rem;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.toggle-btn.active {
+	background: var(--surface-2);
+	color: var(--accent);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-btn:hover:not(.active) {
+	color: var(--text);
+}
+
+.full-week-grid {
+	width: 100%;
+	display: grid;
+	grid-template-columns: 80px repeat(5, 1fr);
+	gap: 12px;
+	overflow-x: auto;
+}
+
+.week-day-header {
+	text-align: center;
+	padding-bottom: 12px;
+	border-bottom: 2px solid var(--line);
+}
+
+.week-day-name {
+	font-weight: 800;
+	color: var(--muted);
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+}
+
+.week-day-date {
+	font-size: 1.2rem;
+	font-weight: 800;
+	color: var(--text);
+}
+
+.week-period-row {
+	display: contents;
+}
+
+.week-period-label {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 800;
+	color: var(--accent);
+	background: rgba(255, 255, 255, 0.02);
+	border-radius: 10px;
+}
+
+.week-cell {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	padding: 10px;
+	min-height: 80px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 4px;
+	font-size: 0.8rem;
+}
+
+.week-cell.has-class {
+	background: linear-gradient(180deg, rgba(82, 214, 197, 0.05), transparent);
+	border-color: rgba(82, 214, 197, 0.2);
+}
+
+.week-course { font-weight: 800; color: var(--text); }
+.week-room { font-size: 0.7rem; color: var(--muted-2); font-weight: 700; }
 
 .info-card, .editor-panel, .auth-card, .toolbar-panel {
 	border-radius: var(--radius-xl); padding: 24px;
