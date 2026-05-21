@@ -185,6 +185,20 @@ a { color: inherit; text-decoration: none; }
 	box-shadow: 0 0 15px rgba(244, 63, 94, 0.2);
 }
 
+.admin-block-cell.is-empty {
+	background: rgba(255, 255, 255, 0.01);
+	border: 1px dashed var(--line);
+	color: var(--muted-2);
+}
+
+.empty-placeholder {
+	font-size: 0.85rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	opacity: 0.5;
+}
+
 .course-name { font-size: 1.4rem; font-weight: 800; color: var(--text); }
 .teacher-name { font-size: 1.1rem; color: var(--muted); font-weight: 600; }
 

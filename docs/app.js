@@ -236,20 +236,22 @@ function renderPublicTable(schedule) {
 		html += `<tr class="period-row">
 			<td class="period-col"><span class="period-label">Period ${p.period}</span></td>
 			${skipX ? '' : `<td class="block-col block-x" ${Number(p.x.length) === 2 ? 'rowspan="2"' : ''}>
+				${p.x.course === "None" ? '' : `
 				<div class="table-block">
 					<div class="course-name">${escapeHtml(p.x.course)}</div>
 					<div class="teacher-name">${escapeHtml(p.x.teacher)}</div>
 					<div class="room-number">Room ${escapeHtml(p.x.room)}</div>
 					${Number(p.x.length) === 2 ? '<div class="double-badge">Double Period</div>' : ''}
-				</div>
+				</div>`}
 			</td>`}
 			${skipY ? '' : `<td class="block-col block-y" ${Number(p.y.length) === 2 ? 'rowspan="2"' : ''}>
+				${p.y.course === "None" ? '' : `
 				<div class="table-block">
 					<div class="course-name">${escapeHtml(p.y.course)}</div>
 					<div class="teacher-name">${escapeHtml(p.y.teacher)}</div>
 					<div class="room-number">Room ${escapeHtml(p.y.room)}</div>
 					${Number(p.y.length) === 2 ? '<div class="double-badge">Double Period</div>' : ''}
-				</div>
+				</div>`}
 			</td>`}
 		</tr>`;
 	});
@@ -298,7 +300,10 @@ function renderAdminBlock(block, key, idx) {
 		});
 	}
 
-	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''} ${hasConflict ? 'has-conflict' : ''}" draggable="true" data-source="table" data-period-index="${idx}" data-block-key="${key}">
+	const isEmpty = block.course === "None";
+
+	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''} ${hasConflict ? 'has-conflict' : ''} ${isEmpty ? 'is-empty' : ''}" draggable="${!isEmpty}" data-source="table" data-period-index="${idx}" data-block-key="${key}">
+		${isEmpty ? `<div class="empty-placeholder">Empty Slot</div>` : `
 		<div class="block-info">
 			<div class="course-name">${escapeHtml(block.course)}</div>
 			<div class="teacher-name">${escapeHtml(block.teacher)}</div>
@@ -310,6 +315,7 @@ function renderAdminBlock(block, key, idx) {
 			</div>
 		</div>
 		${isDouble ? '<div class="double-badge">Double Period</div>' : ''}
+		`}
 	</div>`;
 }
 
@@ -475,6 +481,7 @@ function ensureScheduleShape(s) {
 }
 
 function normalizeBlock(b) {
+	if (b?.course === "None") return { course: "None", teacher: "", room: "", length: 1, note: "" };
 	const d = COURSE_LIBRARY[b?.course] || COURSE_LIBRARY.Bio;
 	return { course: b?.course || "Bio", teacher: b?.teacher || d.teacher, room: b?.room || d.room, length: Number(b?.length) === 2 ? 2 : 1, note: b?.note || "" };
 }
