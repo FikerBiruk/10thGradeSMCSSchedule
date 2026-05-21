@@ -1,4 +1,4 @@
-// Version 4.0 - Firebase Sync Integration
+// Version 5.0 - Multi-Week & Dynamic Logic
 
 const firebaseConfig = {
 	apiKey: "AIzaSyBchrPCAav08CfPBKSTmaHvMrEoid2NxEU",
@@ -11,7 +11,6 @@ const firebaseConfig = {
 	measurementId: "G-33TVT5J6C6"
 };
 
-// Initialize Firebase using compat mode for simple browser script support
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
@@ -26,6 +25,7 @@ const TEACHERS = {
 };
 
 const COURSES = ["Bio", "CS", "ESS", "FOT"];
+const DAYS = ["MON", "TUE", "WED", "THU", "FRI"];
 
 const COURSE_LIBRARY = {
 	Bio: { teacher: "Mr. Yu", room: "2614" },
@@ -37,9 +37,8 @@ const COURSE_LIBRARY = {
 const EMPTY_BLOCK = { course: "None", teacher: "", room: "", length: 1, note: "" };
 
 function createEmptyWeek() {
-	const days = ["MON", "TUE", "WED", "THU", "FRI"];
 	const week = {};
-	days.forEach(day => {
+	DAYS.forEach(day => {
 		week[day] = [1, 2, 3, 4].map(p => ({
 			period: p,
 			x: { ...EMPTY_BLOCK },
@@ -51,35 +50,25 @@ function createEmptyWeek() {
 
 const DEFAULT_SCHEDULE = {
 	weeks: [createEmptyWeek(), createEmptyWeek()],
-	events: [
-		{ period: "all", title: "Welcome Assembly", note: "Gym after Period 2", description: "" },
-	],
+	events: [{ period: "all", title: "Welcome Assembly", note: "Gym after Period 2", description: "" }],
 };
 
 const state = {
 	schedule: DEFAULT_SCHEDULE,
 	darkMode: true,
 	selectedCourse: null,
-	publicView: 'week', // 'week' or 'day'
-	currentWeekIdx: 0,  // 0 or 1
-	currentDay: "MON",  // For Day View
+	publicView: 'week',
+	currentWeekIdx: 0,
+	currentDay: "MON",
 };
 
 document.addEventListener("DOMContentLoaded", () => {
 	const page = document.body.dataset.page;
 	loadDarkModePreference();
 
-	// Initialize Real-time Sync
 	db.ref('schedule').on('value', (snapshot) => {
 		const data = snapshot.val();
-		if (data) {
-			state.schedule = ensureScheduleShape(data);
-		} else {
-			// First time setup: push default schedule to Firebase
-			saveSchedule(DEFAULT_SCHEDULE);
-		}
-
-		// Refresh the UI whenever data changes in Firebase
+		state.schedule = ensureScheduleShape(data);
 		if (page === "public") renderPublicPage();
 		if (page === "admin") renderAdminPage();
 	});
@@ -98,17 +87,14 @@ function saveSchedule(s) {
 
 function applyAutoMerge(schedule) {
 	schedule.weeks.forEach(week => {
-		Object.keys(week).forEach(day => {
+		DAYS.forEach(day => {
 			const periods = week[day];
 			for (let idx = 0; idx < periods.length - 1; idx++) {
-				const p = periods[idx];
-				const next = periods[idx + 1];
-
 				['x', 'y'].forEach(key => {
-					const b1 = p[key];
-					const b2 = next[key];
+					const b1 = periods[idx][key];
+					const b2 = periods[idx+1][key];
 
-					const prev = idx > 0 ? periods[idx - 1] : null;
+					const prev = idx > 0 ? periods[idx-1] : null;
 					if (prev && Number(prev[key].length) === 2) return;
 
 					if (b1.course && b1.course !== "None" && b1.course === b2.course) {
@@ -117,9 +103,7 @@ function applyAutoMerge(schedule) {
 						b2.room = b1.room;
 						b2.length = 1;
 					} else if (Number(b1.length) === 2) {
-						if (b1.course !== b2.course) {
-							b1.length = 1;
-						}
+						if (b1.course !== b2.course) b1.length = 1;
 					}
 				});
 			}
@@ -128,72 +112,207 @@ function applyAutoMerge(schedule) {
 }
 
 function initPublicPage() {
-	renderPublicPage();
+	document.getElementById("weekViewBtn")?.addEventListener("click", () => { state.publicView = 'week'; renderPublicPage(); });
+	document.getElementById("dayViewBtn")?.addEventListener("click", () => { state.publicView = 'day'; renderPublicPage(); });
+	document.getElementById("week0Btn")?.addEventListener("click", () => { state.currentWeekIdx = 0; renderPublicPage(); });
+	document.getElementById("week1Btn")?.addEventListener("click", () => { state.currentWeekIdx = 1; renderPublicPage(); });
 	setupSettingsMenu();
-
-	document.getElementById("weekViewBtn")?.addEventListener("click", () => {
-		state.publicView = 'week';
-		updateViewToggle();
-		renderPublicPage();
-	});
-
-	document.getElementById("dayViewBtn")?.addEventListener("click", () => {
-		state.publicView = 'day';
-		updateViewToggle();
-		renderPublicPage();
-	});
-
-	document.getElementById("week0Btn")?.addEventListener("click", () => {
-		state.currentWeekIdx = 0;
-		updateViewToggle();
-		renderPublicPage();
-	});
-
-	document.getElementById("week1Btn")?.addEventListener("click", () => {
-		state.currentWeekIdx = 1;
-		updateViewToggle();
-		renderPublicPage();
-	});
+	renderPublicPage();
 }
 
 function updateViewToggle() {
-	const weekBtn = document.getElementById("weekViewBtn");
-	const dayBtn = document.getElementById("dayViewBtn");
-	if (weekBtn && dayBtn) {
-		weekBtn.classList.toggle("active", state.publicView === 'week');
-		dayBtn.classList.toggle("active", state.publicView === 'day');
-	}
+	document.getElementById("weekViewBtn")?.classList.toggle("active", state.publicView === 'week');
+	document.getElementById("dayViewBtn")?.classList.toggle("active", state.publicView === 'day');
 
+	const ranges = getWeekDateRanges();
 	const w0 = document.getElementById("week0Btn");
 	const w1 = document.getElementById("week1Btn");
-	if (w0 && w1) {
-		const ranges = getWeekDateRanges();
-		w0.textContent = ranges[0];
-		w1.textContent = ranges[1];
-		w0.classList.toggle("active", state.currentWeekIdx === 0);
-		w1.classList.toggle("active", state.currentWeekIdx === 1);
-	}
+	if (w0) { w0.textContent = ranges[0]; w0.classList.toggle("active", state.currentWeekIdx === 0); }
+	if (w1) { w1.textContent = ranges[1]; w1.classList.toggle("active", state.currentWeekIdx === 1); }
 }
 
 function getWeekDateRanges() {
-	const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 	const now = new Date();
-	const currentDay = now.getDay();
-	const first = now.getDate() - (currentDay === 0 ? 6 : currentDay - 1); // Get Monday
+	const day = now.getDay();
+	const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+	const monday = new Date(now.setDate(diff));
 
-	const formatRange = (offset) => {
-		const monday = new Date(now);
-		monday.setDate(first + offset);
-		const friday = new Date(now);
-		friday.setDate(first + offset + 4);
-
-		const mMonth = monday.toLocaleString('default', { month: 'short' });
-		const fMonth = friday.toLocaleString('default', { month: 'short' });
-
-		return `${mMonth} ${monday.getDate()} - ${fMonth === mMonth ? '' : fMonth + ' '}${friday.getDate()}`;
+	const format = (d) => {
+		const month = d.toLocaleString('default', { month: 'short' });
+		return `${month} ${d.getDate()}`;
 	};
 
-	return [formatRange(0), formatRange(7)];
+	const getRange = (offset) => {
+		const start = new Date(monday); start.setDate(monday.getDate() + offset);
+		const end = new Date(monday); end.setDate(monday.getDate() + offset + 4);
+		return `${format(start)} - ${format(end)}`;
+	};
+
+	return [getRange(0), getRange(7)];
+}
+
+function renderPublicPage() {
+	updateViewToggle();
+	const container = document.getElementById("publicSchedule");
+	let html = renderLiveTimer();
+
+	if (state.publicView === 'day') {
+		const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+		let today = days[new Date().getDay()];
+		if (!DAYS.includes(today)) today = "MON";
+		html += `<h2 class="day-view-title">${today} Schedule - Week ${state.currentWeekIdx + 1}</h2>`;
+		html += renderTable(state.schedule.weeks[state.currentWeekIdx][today], false);
+	} else {
+		html += renderFullWeekView();
+	}
+	container.innerHTML = html;
+	document.getElementById("publicEvents").innerHTML = renderEventFeed(state.schedule);
+}
+
+function renderFullWeekView() {
+	const weekData = state.schedule.weeks[state.currentWeekIdx];
+	const renderGroup = (key, label) => {
+		let h = `<div class="week-group-section"><h3 class="week-group-title ${key}">${label}</h3><div class="full-week-grid"><div class="week-corner"></div>`;
+		DAYS.forEach(day => {
+			h += `<div class="week-day-header"><div class="week-day-name">${day}</div></div>`;
+		});
+		[1, 2, 3, 4].forEach(pNum => {
+			h += `<div class="week-period-row"><div class="week-period-label">P${pNum}</div>`;
+			DAYS.forEach(day => {
+				const block = weekData[day][pNum-1][key];
+				const empty = block.course === "None";
+				h += `<div class="week-cell ${key} ${empty ? 'empty' : 'has-class'}">
+					${empty ? '' : `<div class="week-course">${escapeHtml(block.course)}</div><div class="week-room">Rm ${escapeHtml(block.room)}</div>`}
+				</div>`;
+			});
+			h += `</div>`;
+		});
+		return h + `</div></div>`;
+	};
+	return `<div class="multi-week-container">${renderGroup('x', 'Block X')}${renderGroup('y', 'Block Y')}</div>`;
+}
+
+function renderTable(periods, isAdmin) {
+	let html = `<table class="schedule-table"><thead><tr><th>Period</th><th>Block X</th><th>Block Y</th></tr></thead><tbody>`;
+	periods.forEach((p, idx) => {
+		const prev = idx > 0 ? periods[idx-1] : null;
+		const skipX = prev && Number(prev.x.length) === 2;
+		const skipY = prev && Number(prev.y.length) === 2;
+		html += `<tr><td class="period-col"><span class="period-label">P${p.period}</span></td>
+			${skipX ? '' : `<td class="${isAdmin ? 'block-col' : ''}" ${Number(p.x.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.x, 'x', idx) : renderPublicBlock(p.x)}</td>`}
+			${skipY ? '' : `<td class="${isAdmin ? 'block-col' : ''}" ${Number(p.y.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.y, 'y', idx) : renderPublicBlock(p.y)}</td>`}
+		</tr>`;
+	});
+	return html + `</tbody></table>`;
+}
+
+function renderPublicBlock(b) {
+	if (b.course === "None") return "";
+	return `<div class="table-block"><div class="course-name">${escapeHtml(b.course)}</div><div class="teacher-name">${escapeHtml(b.teacher)}</div><div class="room-number">Room ${escapeHtml(b.room)}</div>${Number(b.length) === 2 ? '<div class="double-badge">Double</div>' : ''}</div>`;
+}
+
+function renderAdminPage() {
+	const user = getLoggedInUser();
+	const heroTitle = document.querySelector(".hero h1");
+	if (heroTitle && user) heroTitle.textContent = `Editor: ${user.name}`;
+
+	const wSelect = document.getElementById("adminWeekSelect");
+	if (wSelect) wSelect.value = state.currentWeekIdx;
+	const dSelect = document.getElementById("adminDaySelect");
+	if (dSelect) dSelect.value = state.currentDay;
+
+	document.getElementById("adminSchedule").innerHTML = renderTable(state.schedule.weeks[state.currentWeekIdx][state.currentDay], true);
+	document.getElementById("adminClassCards").innerHTML = renderClassCards();
+	document.getElementById("eventsEditor").innerHTML = renderEventsEditor(state.schedule);
+	updateSaveStatus();
+	setupDragAndDrop();
+}
+
+function renderAdminBlock(block, key, idx) {
+	const isDouble = Number(block.length) === 2;
+	const empty = block.course === "None";
+	const periods = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
+	let conflict = false;
+	if (!empty) {
+		periods.forEach((p, pIdx) => {
+			if (pIdx !== idx && p[key].course === block.course) {
+				if (Math.abs(pIdx - idx) > 1 || (Number(block.length) !== 2 && Number(p[key].length) !== 2)) conflict = true;
+			}
+		});
+	}
+	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''} ${conflict ? 'has-conflict' : ''} ${empty ? 'is-empty' : ''}" draggable="${!empty}" data-period-index="${idx}" data-block-key="${key}">
+		${empty ? '<div class="empty-placeholder">Empty</div>' : `
+		<div class="block-info"><div class="course-name">${escapeHtml(block.course)}</div><div class="teacher-name">${escapeHtml(block.teacher)}</div></div>
+		<div class="block-controls"><input type="text" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}" autocomplete="off">
+		<div class="block-actions"><button class="toggle-double-btn ${isDouble ? 'active' : ''}" data-action="toggle-double" data-period-index="${idx}" data-block-key="${key}">Double</button></div></div>
+		${isDouble ? '<div class="double-badge">Double</div>' : ''}`}
+	</div>`;
+}
+
+function setupDragAndDrop() {
+	const cards = document.querySelectorAll('.draggable-card');
+	const tableBlocks = document.querySelectorAll('.admin-block-cell[draggable="true"]');
+	const zones = document.querySelectorAll('.admin-table td:not(.period-col)');
+
+	cards.forEach(c => {
+		c.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', 'lib:' + c.dataset.course));
+		c.addEventListener('click', () => {
+			document.querySelectorAll('.draggable-card').forEach(card => card.classList.remove('active-selection'));
+			if (state.selectedCourse === c.dataset.course) state.selectedCourse = null;
+			else { state.selectedCourse = c.dataset.course; c.classList.add('active-selection'); }
+		});
+	});
+
+	tableBlocks.forEach(b => {
+		b.addEventListener('dragstart', e => {
+			const info = { idx: b.dataset.periodIndex, key: b.dataset.blockKey };
+			e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(info));
+		});
+	});
+
+	zones.forEach(z => {
+		const targetKey = z.cellIndex === 1 ? 'x' : 'y';
+		const targetIdx = z.parentElement.rowIndex - 1;
+
+		z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
+		z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
+		z.addEventListener('drop', e => {
+			e.preventDefault(); z.classList.remove('drag-over');
+			const raw = e.dataTransfer.getData('text/plain');
+			handleSelection(targetIdx, targetKey, raw, e, z);
+		});
+
+		z.addEventListener('click', (e) => {
+			if (e.target.closest('input') || e.target.closest('button')) return;
+			if (state.selectedCourse) handleSelection(targetIdx, targetKey, 'lib:' + state.selectedCourse, e, z);
+		});
+	});
+}
+
+function handleSelection(tIdx, key, raw, event, zone) {
+	if (!raw) return;
+	const week = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
+	if (Number(week[tIdx][key].length) === 2 && event) {
+		const rect = zone.getBoundingClientRect();
+		if ((event.clientY - rect.top) > rect.height / 2) tIdx++;
+	}
+
+	if (raw.startsWith('lib:')) {
+		const course = raw.replace('lib:', '');
+		const block = week[tIdx][key];
+		block.course = course;
+		const lib = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
+		block.teacher = lib.teacher; block.room = lib.room; block.length = 1;
+	} else if (raw.startsWith('table:')) {
+		const source = JSON.parse(raw.replace('table:', ''));
+		if (source.idx == tIdx && source.key == key) return;
+		const sBlock = week[source.idx][source.key];
+		const tBlock = week[tIdx][key];
+		const temp = { ...sBlock };
+		sBlock.course = tBlock.course; sBlock.teacher = tBlock.teacher; sBlock.room = tBlock.room; sBlock.length = 1;
+		tBlock.course = temp.course; tBlock.teacher = temp.teacher; tBlock.room = temp.room; tBlock.length = 1;
+	}
+	saveSchedule(state.schedule);
 }
 
 function initAdminPage() {
@@ -207,13 +326,6 @@ function initAdminPage() {
 	document.body.classList.remove('auth-mode');
 	document.getElementById("loginPanel").hidden = true;
 	document.getElementById("adminApp").hidden = false;
-
-	// Set initial Day based on actual current day
-	const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-	const today = days[new Date().getDay()];
-	if (["MON", "TUE", "WED", "THU", "FRI"].includes(today)) {
-		state.currentDay = today;
-	}
 
 	renderAdminPage();
 	setupSettingsMenu();
@@ -232,61 +344,6 @@ function initAdminPage() {
 	});
 }
 
-function handleAdminLogin(event) {
-	event.preventDefault();
-	const u = document.getElementById("adminUsername").value.trim().toLowerCase();
-	const p = document.getElementById("adminPassword").value;
-
-	const teacher = TEACHERS[u];
-	if (teacher && teacher.password === p) {
-		localStorage.setItem(AUTH_KEY, "ok");
-		localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
-			username: u,
-			name: teacher.name,
-			course: teacher.course
-		}));
-		location.reload();
-	} else {
-		const err = document.getElementById("loginError");
-		err.textContent = "Invalid username or password.";
-		err.hidden = false;
-	}
-}
-
-function handleLogout() {
-	localStorage.removeItem(AUTH_KEY);
-	localStorage.removeItem(AUTH_USER_KEY);
-	location.reload();
-}
-
-function handleAdminInput(event) {
-	const target = event.target;
-	const schedule = state.schedule;
-
-	// Handle Event Fields (Title, Note, Description, Period)
-	if (target.matches("[data-event-field]")) {
-		const idx = Number(target.dataset.eventIndex);
-		const field = target.dataset.eventField;
-		if (schedule.events[idx]) {
-			schedule.events[idx][field] = target.value === "all" ? "all" : (isNaN(target.value) ? target.value : Number(target.value));
-			saveSchedule(schedule);
-			updateSaveStatus();
-		}
-	}
-
-	// Handle Room Edits
-	if (target.matches("[data-room-edit]")) {
-		const idx = Number(target.dataset.periodIndex);
-		const key = target.dataset.blockKey;
-		const block = schedule.weeks[state.currentWeekIdx][state.currentDay][idx][key];
-		if (block) {
-			block.room = target.value;
-			saveSchedule(schedule);
-			updateSaveStatus();
-		}
-	}
-}
-
 function handleAdminClick(event) {
 	const target = event.target;
 	if (target.closest("#resetButton")) resetSampleSchedule();
@@ -296,440 +353,73 @@ function handleAdminClick(event) {
 	if (target.closest("[data-action='delete-event']")) deleteEventRow(Number(target.closest("[data-action='delete-event']").dataset.eventIndex));
 	if (target.closest("[data-action='toggle-description']")) {
 		const btn = target.closest("[data-action='toggle-description']");
-		const idx = btn.dataset.eventIndex;
-		const el = document.querySelector(`.desc-container[data-event-index="${idx}"]`);
-		if (el) {
-			el.classList.toggle('hidden');
-			btn.textContent = el.classList.contains('hidden') ? 'Add description' : 'Hide description';
-		}
+		const el = document.querySelector(`.desc-container[data-event-index="${btn.dataset.eventIndex}"]`);
+		if (el) { el.classList.toggle('hidden'); btn.textContent = el.classList.contains('hidden') ? 'Add description' : 'Hide description'; }
 	}
 	if (target.closest("[data-action='toggle-double']")) {
 		const btn = target.closest("[data-action='toggle-double']");
 		const idx = Number(btn.dataset.periodIndex);
 		const key = btn.dataset.blockKey;
-		const schedule = state.schedule;
-		const block = schedule.periods[idx][key];
+		const periods = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
+		const block = periods[idx][key];
 		const isNowDouble = Number(block.length) === 1;
 		if (isNowDouble) {
 			block.length = 2;
-			if (schedule.periods[idx + 1]) {
-				const next = schedule.periods[idx + 1][key];
-				next.course = block.course;
-				next.teacher = block.teacher;
-				next.room = block.room;
-				next.length = 1;
+			if (periods[idx + 1]) {
+				const next = periods[idx + 1][key];
+				next.course = block.course; next.teacher = block.teacher; next.room = block.room; next.length = 1;
 			}
 		} else {
 			block.length = 1;
 		}
-		saveSchedule(schedule);
+		saveSchedule(state.schedule);
 	}
-}
-
-function renderPublicPage() {
-	const schedule = state.schedule;
-	const container = document.getElementById("publicSchedule");
-
-	updateViewToggle();
-
-	let html = renderLiveTimer(); // New Live Status Header
-
-	if (state.publicView === 'day') {
-		html += renderPublicTable(schedule);
-	} else {
-		html += renderFullWeekGrid(schedule);
-	}
-
-	container.innerHTML = html;
-	document.getElementById("publicEvents").innerHTML = renderEventFeed(schedule);
 }
 
 function renderLiveTimer() {
 	const now = new Date();
 	const day = now.getDay();
 	const time = now.getHours() * 60 + now.getMinutes();
-
 	if (day === 0 || day === 6) return `<div class="live-status-card weekend">Weekend Mode</div>`;
-
-	const schedule = [
-		{ p: 1, start: 480, end: 570 },  // 8:00 - 9:30
-		{ p: 2, start: 585, end: 675 },  // 9:45 - 11:15
-		{ p: 3, start: 735, end: 825 },  // 12:15 - 1:45
-		{ p: 4, start: 840, end: 930 }   // 2:00 - 3:30
-	];
-
-	let statusHtml = "";
-	const current = schedule.find(s => time >= s.start && time <= s.end);
-	const next = schedule.find(s => s.start > time);
-
-	if (current) {
-		const remaining = current.end - time;
-		statusHtml = `<div class="live-status-card active">Period ${current.p} ends in ${remaining}m</div>`;
-	} else if (next) {
-		const until = next.start - time;
-		statusHtml = `<div class="live-status-card break">Break: Period ${next.p} starts in ${until}m</div>`;
-	} else {
-		statusHtml = `<div class="live-status-card off">School Day Over</div>`;
-	}
-
-	return statusHtml;
+	const sch = [{ p: 1, s: 480, e: 570 }, { p: 2, s: 585, e: 675 }, { p: 3, s: 735, e: 825 }, { p: 4, s: 840, e: 930 }];
+	const curr = sch.find(s => time >= s.s && time <= s.e);
+	const next = sch.find(s => s.s > time);
+	if (curr) return `<div class="live-status-card active">Period ${curr.p} ends in ${curr.e - time}m</div>`;
+	if (next) return `<div class="live-status-card break">Break: Period ${next.p} starts in ${next.s - time}m</div>`;
+	return `<div class="live-status-card off">School Day Over</div>`;
 }
 
-function renderFullWeekGrid(schedule) {
-	const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri"];
-
-	// Get current week dates
-	const now = new Date();
-	const first = now.getDate() - now.getDay() + 1; // Monday
-	const weekDates = dayLabels.map((_, i) => {
-		const d = new Date(now);
-		d.setDate(first + i);
-		return d.getDate();
-	});
-
-	const renderTable = (groupKey, label) => {
-		let html = `<div class="week-group-section">
-			<h3 class="week-group-title ${groupKey.toLowerCase()}">${label}</h3>
-			<div class="full-week-grid">
-				<div class="week-corner"></div>
-				${dayLabels.map((dayLabel, i) => `
-					<div class="week-day-header">
-						<div class="week-day-name">${dayLabel}</div>
-						<div class="week-day-date">${weekDates[i]}</div>
-					</div>
-				`).join('')}`;
-
-		[1, 2, 3, 4].forEach(period => {
-			html += `<div class="week-period-row">
-				<div class="week-period-label">P${period}</div>
-				${[0, 1, 2, 3, 4].map(dayIdx => {
-					const pData = schedule.periods[period - 1];
-					const block = pData ? pData[groupKey] : null;
-					const isEmpty = !block || block.course === "None";
-
-					return `
-						<div class="week-cell ${groupKey.toLowerCase()} ${isEmpty ? 'empty' : 'has-class'}">
-							${isEmpty ? '' : `
-								<div class="week-course">${escapeHtml(block.course)}</div>
-								<div class="week-room">Rm ${escapeHtml(block.room)}</div>
-							`}
-						</div>
-					`;
-				}).join('')}
-			</div>`;
-		});
-
-		html += `</div></div>`;
-		return html;
-	};
-
-	return `
-		<div class="multi-week-container">
-			${renderTable('x', 'Block X Schedule')}
-			${renderTable('y', 'Block Y Schedule')}
-		</div>
-	`;
+function renderEventFeed(s) {
+	if (!s.events.length) return '<p class="muted-copy">No special events scheduled.</p>';
+	return s.events.map(ev => `<article class="event-card"><div class="event-header"><span class="event-chip">${ev.period === 'all' ? 'All day' : 'Period ' + ev.period}</span></div><div class="event-title">${escapeHtml(ev.title)}</div>${ev.note ? `<div class="event-note">${escapeHtml(ev.note)}</div>` : ''}${ev.description ? `<div class="event-description">${escapeHtml(ev.description)}</div>` : ''}</article>`).join('');
 }
 
-function renderAdminPage() {
-	const schedule = state.schedule;
-	const user = getLoggedInUser();
-
-	// Update header with teacher name
-	const heroTitle = document.querySelector(".hero h1");
-	if (heroTitle && user) {
-		heroTitle.textContent = `Editor: ${user.name}`;
-	}
-
-	// Update dropdowns to match state
-	const wSelect = document.getElementById("adminWeekSelect");
-	if (wSelect) wSelect.value = state.currentWeekIdx;
-	const dSelect = document.getElementById("adminDaySelect");
-	if (dSelect) dSelect.value = state.currentDay;
-
-	document.getElementById("adminSchedule").innerHTML = renderAdminTable(schedule);
-	document.getElementById("adminClassCards").innerHTML = renderClassCards();
-	document.getElementById("eventsEditor").innerHTML = renderEventsEditor(schedule);
-	updateSaveStatus();
-	setupDragAndDrop();
-}
-
-function renderPublicTable(schedule, weekIdx, day) {
-	const periods = schedule.weeks[weekIdx][day];
-	let html = `<table class="schedule-table"><thead><tr><th class="period-col">Period</th><th class="block-col">Block X</th><th class="block-col">Block Y</th></tr></thead><tbody>`;
-	periods.forEach((p, idx) => {
-		const prev = idx > 0 ? periods[idx-1] : null;
-		const skipX = prev && Number(prev.x.length) === 2;
-		const skipY = prev && Number(prev.y.length) === 2;
-		html += `<tr class="period-row">
-			<td class="period-col"><span class="period-label">Period ${p.period}</span></td>
-			${skipX ? '' : `<td class="block-col block-x" ${Number(p.x.length) === 2 ? 'rowspan="2"' : ''}>
-				${p.x.course === "None" ? '' : `
-				<div class="table-block">
-					<div class="course-name">${escapeHtml(p.x.course)}</div>
-					<div class="teacher-name">${escapeHtml(p.x.teacher)}</div>
-					<div class="room-number">Room ${escapeHtml(p.x.room)}</div>
-					${Number(p.x.length) === 2 ? '<div class="double-badge">Double Period</div>' : ''}
-				</div>`}
-			</td>`}
-			${skipY ? '' : `<td class="block-col block-y" ${Number(p.y.length) === 2 ? 'rowspan="2"' : ''}>
-				${p.y.course === "None" ? '' : `
-				<div class="table-block">
-					<div class="course-name">${escapeHtml(p.y.course)}</div>
-					<div class="teacher-name">${escapeHtml(p.y.teacher)}</div>
-					<div class="room-number">Room ${escapeHtml(p.y.room)}</div>
-					${Number(p.y.length) === 2 ? '<div class="double-badge">Double Period</div>' : ''}
-				</div>`}
-			</td>`}
-		</tr>`;
-	});
-	return html + `</tbody></table>`;
-}
-
-function renderAdminTable(schedule) {
-	const periods = schedule.weeks[state.currentWeekIdx][state.currentDay];
-	let html = `<table class="schedule-table admin-table"><thead><tr><th class="period-col">Period</th><th class="block-col">Block X</th><th class="block-col">Block Y</th></tr></thead><tbody>`;
-	periods.forEach((p, idx) => {
-		const prev = idx > 0 ? periods[idx - 1] : null;
-		const skipX = prev && Number(prev.x.length) === 2;
-		const skipY = prev && Number(prev.y.length) === 2;
-		html += `<tr>
-			<td class="period-col"><span class="period-label">Period ${p.period}</span></td>
-			${skipX ? '' : `<td class="block-col block-x" data-block="x" data-period-index="${idx}" ${Number(p.x.length) === 2 ? 'rowspan="2"' : ''}>
-				${renderAdminBlock(p.x, 'x', idx)}
-			</td>`}
-			${skipY ? '' : `<td class="block-col block-y" data-block="y" data-period-index="${idx}" ${Number(p.y.length) === 2 ? 'rowspan="2"' : ''}>
-				${renderAdminBlock(p.y, 'y', idx)}
-			</td>`}
-		</tr>`;
-	});
-	return html + `</tbody></table>`;
-}
-
-function renderAdminBlock(block, key, idx) {
-	const isDouble = Number(block.length) === 2;
-	const canDouble = idx < 3;
-	const inputId = `room-edit-${idx}-${key}`;
-
-	// Check for conflicts within the current week and day
-	const periods = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
-	let hasConflict = false;
-	if (block.course !== "None") {
-		periods.forEach((p, pIdx) => {
-			if (pIdx === idx) return;
-			if (p[key].course === block.course) {
-				if (Math.abs(pIdx - idx) > 1) hasConflict = true;
-				const isAdjacent = Math.abs(pIdx - idx) === 1;
-				if (isAdjacent && Number(block.length) !== 2 && Number(p[key].length) !== 2) {
-					hasConflict = true;
-				}
-			}
-		});
-	}
-
-	const isEmpty = block.course === "None";
-
-	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''} ${hasConflict ? 'has-conflict' : ''} ${isEmpty ? 'is-empty' : ''}" draggable="${!isEmpty}" data-source="table" data-period-index="${idx}" data-block-key="${key}">
-		${isEmpty ? `<div class="empty-placeholder">Empty Slot</div>` : `
-		<div class="block-info">
-			<div class="course-name">${escapeHtml(block.course)}</div>
-			<div class="teacher-name">${escapeHtml(block.teacher)}</div>
-		</div>
-		<div class="block-controls">
-			<input type="text" id="${inputId}" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}" placeholder="Room" autocomplete="off">
-			<div class="block-actions">
-				${canDouble ? `<button class="toggle-double-btn ${isDouble ? 'active' : ''}" data-action="toggle-double" data-period-index="${idx}" data-block-key="${key}">${isDouble ? 'Double Period ON' : 'Make Double'}</button>` : ''}
-			</div>
-		</div>
-		${isDouble ? '<div class="double-badge">Double Period</div>' : ''}
-		`}
-	</div>`;
-}
-
-function renderClassCards() {
-	return COURSES.map(c => `<div class="class-card draggable-card" draggable="true" data-course="${c}"><div class="card-title">${c}</div><div class="card-teacher">${COURSE_LIBRARY[c].teacher}</div><div class="card-room">Room ${COURSE_LIBRARY[c].room}</div></div>`).join('');
-}
-
-function setupDragAndDrop() {
-	const cards = document.querySelectorAll('.draggable-card');
-	const tableBlocks = document.querySelectorAll('.admin-block-cell[draggable="true"]');
-	const zones = document.querySelectorAll('.admin-table .block-col');
-
-	// Library Card Dragging
-	cards.forEach(c => {
-		c.addEventListener('dragstart', e => {
-			e.dataTransfer.setData('text/plain', 'library:' + c.dataset.course);
-			c.classList.add('dragging');
-		});
-		c.addEventListener('dragend', () => c.classList.remove('dragging'));
-		c.addEventListener('click', () => {
-			if (state.selectedCourse === c.dataset.course) {
-				state.selectedCourse = null;
-				c.classList.remove('active-selection');
-			} else {
-				cards.forEach(card => card.classList.remove('active-selection'));
-				state.selectedCourse = c.dataset.course;
-				c.classList.add('active-selection');
-			}
-		});
-	});
-
-	// Table Block Dragging (for Swapping/Rearranging)
-	tableBlocks.forEach(b => {
-		b.addEventListener('dragstart', e => {
-			const info = { idx: b.dataset.periodIndex, key: b.dataset.blockKey };
-			e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(info));
-			b.classList.add('dragging');
-		});
-		b.addEventListener('dragend', () => b.classList.remove('dragging'));
-	});
-
-	zones.forEach(z => {
-		z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
-		z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
-		z.addEventListener('drop', e => {
-			e.preventDefault();
-			z.classList.remove('drag-over');
-			const rawData = e.dataTransfer.getData('text/plain');
-			handleSelection(z, rawData, e);
-		});
-
-		z.addEventListener('click', (e) => {
-			if (e.target.closest('input') || e.target.closest('button')) return;
-			if (state.selectedCourse) {
-				handleSelection(z, 'library:' + state.selectedCourse, e);
-			}
-		});
-	});
-}
-
-function handleSelection(zone, rawData, event) {
-	if (!rawData) return;
-	let targetIdx = Number(zone.dataset.periodIndex);
-	const targetKey = zone.dataset.block;
-	const schedule = state.schedule;
-
-	// Check if dropping into the bottom half of a double period
-	const existingTargetBlock = schedule.weeks[state.currentWeekIdx][state.currentDay][targetIdx][targetKey];
-	if (Number(existingTargetBlock.length) === 2 && event) {
-		const rect = zone.getBoundingClientRect();
-		if ((event.clientY - rect.top) > rect.height / 2) {
-			targetIdx++;
-		}
-	}
-
-	if (rawData.startsWith('library:')) {
-		const course = rawData.replace('library:', '');
-		assignCourseToZone(targetIdx, targetKey, course);
-	} else if (rawData.startsWith('table:')) {
-		const source = JSON.parse(rawData.replace('table:', ''));
-		const sIdx = Number(source.idx);
-		const sKey = source.key;
-
-		if (sIdx === targetIdx && sKey === targetKey) return;
-
-		const sBlock = schedule.weeks[state.currentWeekIdx][state.currentDay][sIdx][sKey];
-		const tBlock = schedule.weeks[state.currentWeekIdx][state.currentDay][targetIdx][targetKey];
-
-		const temp = { ...sBlock };
-
-		sBlock.course = tBlock.course;
-		sBlock.teacher = tBlock.teacher;
-		sBlock.room = tBlock.room;
-		sBlock.length = 1;
-
-		tBlock.course = temp.course;
-		tBlock.teacher = temp.teacher;
-		tBlock.room = temp.room;
-		tBlock.length = 1;
-
-		saveSchedule(schedule);
-	}
-}
-
-function assignCourseToZone(idx, key, course) {
-	const block = state.schedule.weeks[state.currentWeekIdx][state.currentDay][idx][key];
-	block.course = course;
-	const lib = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
-	block.teacher = lib.teacher;
-	block.room = lib.room;
-	block.length = 1;
-
-	saveSchedule(state.schedule);
-}
-
-function renderEventsEditor(schedule) {
-	if (!schedule.events.length) return '<p class="muted-copy">No special events.</p>';
-	return `<div class="event-editor-horizontal">
-		${schedule.events.map((ev, i) => {
-			const hasDesc = ev.description && ev.description.length > 0;
-			return `<div class="event-editor-card" data-event-index="${i}">
-				<div class="field"><span>When</span><select data-event-field="period" data-event-index="${i}">${['all', 1, 2, 3, 4].map(v => `<option value="${v}" ${ev.period == v ? 'selected' : ''}>${v == 'all' ? 'All day' : 'Period ' + v}</option>`).join('')}</select></div>
-				<div class="field"><span>Title</span><input type="text" data-event-field="title" data-event-index="${i}" value="${escapeAttribute(ev.title)}"></div>
-				<div class="field"><span>Note</span><input type="text" data-event-field="note" data-event-index="${i}" value="${escapeAttribute(ev.note)}"></div>
-				<div class="desc-container ${hasDesc ? '' : 'hidden'}" data-event-index="${i}">
-					<div class="field"><span>Description</span><textarea data-event-field="description" data-event-index="${i}">${escapeAttribute(ev.description)}</textarea></div>
-				</div>
-				<div class="event-actions">
-					<button class="ghost-btn small-btn" data-action="toggle-description" data-event-index="${i}">${hasDesc ? 'Hide Desc' : 'Add Desc'}</button>
-					<button class="ghost-btn small-btn" data-action="delete-event" data-event-index="${i}">Remove</button>
-				</div>
-			</div>`;
-		}).join('')}
-	</div>`;
-}
-
-function renderEventFeed(schedule) {
-	if (!schedule.events.length) return '<p class="muted-copy">No special events scheduled.</p>';
-	return schedule.events.map(ev => `
-		<article class="event-card">
-			<div class="event-header">
-				<span class="event-chip">${ev.period === 'all' ? 'All day' : 'Period ' + ev.period}</span>
-			</div>
-			<div class="event-title">${escapeHtml(ev.title)}</div>
-			${ev.note ? `<div class="event-note">${escapeHtml(ev.note)}</div>` : ''}
-			${ev.description ? `<div class="event-description">${escapeHtml(ev.description)}</div>` : ''}
-		</article>
-	`).join('');
+function renderEventsEditor(s) {
+	if (!s.events.length) return '<p class="muted-copy">No special events.</p>';
+	return `<div class="event-editor-horizontal">${s.events.map((ev, i) => {
+		const hasDesc = ev.description && ev.description.length > 0;
+		return `<div class="event-editor-card" data-event-index="${i}"><div class="field"><span>When</span><select data-event-field="period" data-event-index="${i}">${['all', 1, 2, 3, 4].map(v => `<option value="${v}" ${ev.period == v ? 'selected' : ''}>${v == 'all' ? 'All day' : 'Period ' + v}</option>`).join('')}</select></div><div class="field"><span>Title</span><input type="text" data-event-field="title" data-event-index="${i}" value="${escapeAttribute(ev.title)}"></div><div class="field"><span>Note</span><input type="text" data-event-field="note" data-event-index="${i}" value="${escapeAttribute(ev.note)}"></div><div class="desc-container ${hasDesc ? '' : 'hidden'}" data-event-index="${i}"><div class="field"><span>Description</span><textarea data-event-field="description" data-event-index="${i}">${escapeAttribute(ev.description)}</textarea></div></div><div class="event-actions"><button class="ghost-btn small-btn" data-action="toggle-description" data-event-index="${i}">${hasDesc ? 'Hide Desc' : 'Add Desc'}</button><button class="ghost-btn small-btn" data-action="delete-event" data-event-index="${i}">Remove</button></div></div>`;
+	}).join('')}</div>`;
 }
 
 function ensureScheduleShape(s) {
 	if (!s) return JSON.parse(JSON.stringify(DEFAULT_SCHEDULE));
-
-	const newSchedule = {
-		weeks: s.weeks || [createEmptyWeek(), createEmptyWeek()],
-		events: Array.isArray(s.events) ? s.events : []
-	};
-
-	// Migration logic: If old "periods" format exists, populate all days with it
+	const n = { weeks: s.weeks || [createEmptyWeek(), createEmptyWeek()], events: Array.isArray(s.events) ? s.events : [] };
 	if (Array.isArray(s.periods) && !s.weeks) {
-		const migratedWeek = {};
-		["MON", "TUE", "WED", "THU", "FRI"].forEach(day => {
-			migratedWeek[day] = s.periods.map(p => ({
-				period: p.period,
-				x: normalizeBlock(p.x),
-				y: normalizeBlock(p.y)
-			}));
-		});
-		newSchedule.weeks = [migratedWeek, JSON.parse(JSON.stringify(migratedWeek))];
+		const week = {};
+		DAYS.forEach(day => { week[day] = s.periods.map(p => ({ period: p.period, x: normalizeBlock(p.x), y: normalizeBlock(p.y) })); });
+		n.weeks = [week, JSON.parse(JSON.stringify(week))];
 	}
-
-	// Final validation of the week structure
-	newSchedule.weeks.forEach((week, wIdx) => {
-		["MON", "TUE", "WED", "THU", "FRI"].forEach(day => {
+	n.weeks.forEach(week => {
+		DAYS.forEach(day => {
 			if (!week[day]) week[day] = createEmptyWeek().MON;
 			week[day] = [1, 2, 3, 4].map((num, i) => {
-				const existing = week[day][i];
-				return {
-					period: num,
-					x: normalizeBlock(existing?.x),
-					y: normalizeBlock(existing?.y)
-				};
+				const ex = week[day][i];
+				return { period: num, x: normalizeBlock(ex?.x), y: normalizeBlock(ex?.y) };
 			});
 		});
 	});
-
-	return newSchedule;
+	return n;
 }
 
 function normalizeBlock(b) {
@@ -771,27 +461,18 @@ function getLoggedInUser() {
 	const data = localStorage.getItem(AUTH_USER_KEY);
 	return data ? JSON.parse(data) : null;
 }
-function resetSampleSchedule() {
-	if (confirm('Reset to default for EVERYONE?')) {
-		saveSchedule(JSON.parse(JSON.stringify(DEFAULT_SCHEDULE)));
-	}
-}
+function resetSampleSchedule() { if (confirm('Reset?')) saveSchedule(JSON.parse(JSON.stringify(DEFAULT_SCHEDULE))); }
 function clearAllClasses() {
-	if (confirm('Clear ALL classes from the current Week and Day?')) {
-		const schedule = state.schedule;
-		const periods = schedule.weeks[state.currentWeekIdx][state.currentDay];
-		periods.forEach(p => {
-			p.x = { ...EMPTY_BLOCK };
-			p.y = { ...EMPTY_BLOCK };
-		});
-		saveSchedule(schedule);
+	if (confirm('Clear?')) {
+		const s = state.schedule;
+		s.weeks[state.currentWeekIdx][state.currentDay].forEach(p => { p.x = { ...EMPTY_BLOCK }; p.y = { ...EMPTY_BLOCK }; });
+		saveSchedule(s);
 	}
 }
 function exportSchedule() {
 	const blob = new Blob([JSON.stringify(state.schedule, null, 2)], { type: 'application/json' });
 	const url = URL.createObjectURL(blob);
-	const a = document.createElement('a');
-	a.href = url; a.download = 'schedule.json'; a.click();
+	const a = document.createElement('a'); a.href = url; a.download = 'schedule.json'; a.click();
 	URL.revokeObjectURL(url);
 }
 function addEventRow() { state.schedule.events.push({ period: 'all', title: '', note: '', description: '' }); saveSchedule(state.schedule); }
