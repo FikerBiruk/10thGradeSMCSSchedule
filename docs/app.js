@@ -176,6 +176,7 @@ function handleAdminInput(event) {
 function handleAdminClick(event) {
 	const target = event.target;
 	if (target.matches("#resetButton")) resetSampleSchedule();
+	if (target.matches("#clearAllButton")) clearAllClasses();
 	if (target.matches("#exportButton")) exportSchedule();
 	if (target.matches("#addEventButton")) addEventRow();
 	if (target.matches("[data-action='delete-event']")) deleteEventRow(Number(target.dataset.eventIndex));
@@ -506,6 +507,16 @@ function updateSaveStatus() {
 
 function isAuthenticated() { return localStorage.getItem(AUTH_KEY) === 'ok'; }
 function resetSampleSchedule() { if (confirm('Reset to default for EVERYONE?')) { saveSchedule(DEFAULT_SCHEDULE); } }
+function clearAllClasses() {
+	if (confirm('Clear ALL classes from the current schedule?')) {
+		const schedule = state.schedule;
+		schedule.periods.forEach(p => {
+			p.x = { course: "None", teacher: "", room: "", length: 1, note: "" };
+			p.y = { course: "None", teacher: "", room: "", length: 1, note: "" };
+		});
+		saveSchedule(schedule);
+	}
+}
 function exportSchedule() {
 	const blob = new Blob([JSON.stringify(state.schedule, null, 2)], { type: 'application/json' });
 	const url = URL.createObjectURL(blob);

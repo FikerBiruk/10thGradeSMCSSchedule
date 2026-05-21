@@ -221,6 +221,26 @@ a { color: inherit; text-decoration: none; }
 .ghost-btn { background: transparent; color: var(--text); border: 1px solid rgba(255, 255, 255, 0.15); }
 .primary-btn:hover, .secondary-btn:hover, .ghost-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
 
+.danger-btn {
+	background: rgba(244, 63, 94, 0.1);
+	color: #ff7f87;
+	border: 1px solid rgba(244, 63, 94, 0.2);
+	border-radius: 14px;
+	padding: 12px 18px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.danger-btn:hover {
+	background: #ff7f87;
+	color: #000;
+	transform: translateY(-2px);
+}
+
 /* Layout & Utils */
 .toolbar-panel { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 20px; }
 .save-status { font-size: 0.9rem; color: var(--accent); font-weight: 600; }
