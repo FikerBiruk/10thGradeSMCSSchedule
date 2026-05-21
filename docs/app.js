@@ -34,13 +34,23 @@ const COURSE_LIBRARY = {
 	FOT: { teacher: "Ms. Bayonet", room: "1620" },
 };
 
+const EMPTY_BLOCK = { course: "None", teacher: "", room: "", length: 1, note: "" };
+
+function createEmptyWeek() {
+	const days = ["MON", "TUE", "WED", "THU", "FRI"];
+	const week = {};
+	days.forEach(day => {
+		week[day] = [1, 2, 3, 4].map(p => ({
+			period: p,
+			x: { ...EMPTY_BLOCK },
+			y: { ...EMPTY_BLOCK }
+		}));
+	});
+	return week;
+}
+
 const DEFAULT_SCHEDULE = {
-	periods: [
-		{ period: 1, x: { course: "Bio", teacher: "Mr. Yu", room: "2614", length: 1, note: "" }, y: { course: "CS", teacher: "Ms. Hallisey", room: "1702", length: 1, note: "" } },
-		{ period: 2, x: { course: "CS", teacher: "Ms. Hallisey", room: "1702", length: 1, note: "" }, y: { course: "Bio", teacher: "Mr. Yu", room: "2614", length: 1, note: "" } },
-		{ period: 3, x: { course: "ESS", teacher: "Mr. Kingman", room: "1708", length: 1, note: "" }, y: { course: "FOT", teacher: "Ms. Bayonet", room: "1620", length: 1, note: "" } },
-		{ period: 4, x: { course: "FOT", teacher: "Ms. Bayonet", room: "1620", length: 1, note: "" }, y: { course: "ESS", teacher: "Mr. Kingman", room: "1708", length: 1, note: "" } },
-	],
+	weeks: [createEmptyWeek(), createEmptyWeek()],
 	events: [
 		{ period: "all", title: "Welcome Assembly", note: "Gym after Period 2", description: "" },
 	],
@@ -49,8 +59,10 @@ const DEFAULT_SCHEDULE = {
 const state = {
 	schedule: DEFAULT_SCHEDULE,
 	darkMode: true,
-	selectedCourse: null, // "Bio", "CS", etc.
+	selectedCourse: null,
 	publicView: 'week', // 'week' or 'day'
+	currentWeekIdx: 0,  // 0 or 1
+	currentDay: "MON",  // For Day View
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -85,30 +97,34 @@ function saveSchedule(s) {
 }
 
 function applyAutoMerge(schedule) {
-	for (let idx = 0; idx < schedule.periods.length - 1; idx++) {
-		const p = schedule.periods[idx];
-		const next = schedule.periods[idx + 1];
+	schedule.weeks.forEach(week => {
+		Object.keys(week).forEach(day => {
+			const periods = week[day];
+			for (let idx = 0; idx < periods.length - 1; idx++) {
+				const p = periods[idx];
+				const next = periods[idx + 1];
 
-		['x', 'y'].forEach(key => {
-			const b1 = p[key];
-			const b2 = next[key];
+				['x', 'y'].forEach(key => {
+					const b1 = p[key];
+					const b2 = next[key];
 
-			// If b1 is already a double, it covers b2, so we don't start a new double at b2
-			const prev = idx > 0 ? schedule.periods[idx - 1] : null;
-			if (prev && Number(prev[key].length) === 2) return;
+					const prev = idx > 0 ? periods[idx - 1] : null;
+					if (prev && Number(prev[key].length) === 2) return;
 
-			if (b1.course && b1.course !== "None" && b1.course === b2.course) {
-				b1.length = 2;
-				b2.teacher = b1.teacher;
-				b2.room = b1.room;
-				b2.length = 1;
-			} else if (Number(b1.length) === 2) {
-				if (b1.course !== b2.course) {
-					b1.length = 1;
-				}
+					if (b1.course && b1.course !== "None" && b1.course === b2.course) {
+						b1.length = 2;
+						b2.teacher = b1.teacher;
+						b2.room = b1.room;
+						b2.length = 1;
+					} else if (Number(b1.length) === 2) {
+						if (b1.course !== b2.course) {
+							b1.length = 1;
+						}
+					}
+				});
 			}
 		});
-	}
+	});
 }
 
 function initPublicPage() {
@@ -126,6 +142,18 @@ function initPublicPage() {
 		updateViewToggle();
 		renderPublicPage();
 	});
+
+	document.getElementById("week0Btn")?.addEventListener("click", () => {
+		state.currentWeekIdx = 0;
+		updateViewToggle();
+		renderPublicPage();
+	});
+
+	document.getElementById("week1Btn")?.addEventListener("click", () => {
+		state.currentWeekIdx = 1;
+		updateViewToggle();
+		renderPublicPage();
+	});
 }
 
 function updateViewToggle() {
@@ -134,6 +162,13 @@ function updateViewToggle() {
 	if (weekBtn && dayBtn) {
 		weekBtn.classList.toggle("active", state.publicView === 'week');
 		dayBtn.classList.toggle("active", state.publicView === 'day');
+	}
+
+	const w0 = document.getElementById("week0Btn");
+	const w1 = document.getElementById("week1Btn");
+	if (w0 && w1) {
+		w0.classList.toggle("active", state.currentWeekIdx === 0);
+		w1.classList.toggle("active", state.currentWeekIdx === 1);
 	}
 }
 
@@ -148,12 +183,29 @@ function initAdminPage() {
 	document.body.classList.remove('auth-mode');
 	document.getElementById("loginPanel").hidden = true;
 	document.getElementById("adminApp").hidden = false;
+
+	// Set initial Day based on actual current day
+	const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+	const today = days[new Date().getDay()];
+	if (["MON", "TUE", "WED", "THU", "FRI"].includes(today)) {
+		state.currentDay = today;
+	}
+
 	renderAdminPage();
 	setupSettingsMenu();
 	document.getElementById("logoutButton").addEventListener("click", handleLogout);
 	const adminApp = document.getElementById("adminApp");
-	adminApp.addEventListener("change", handleAdminInput); // Changed from 'input' to 'change'
+	adminApp.addEventListener("change", handleAdminInput);
 	adminApp.addEventListener("click", handleAdminClick);
+
+	document.getElementById("adminWeekSelect")?.addEventListener("change", (e) => {
+		state.currentWeekIdx = Number(e.target.value);
+		renderAdminPage();
+	});
+	document.getElementById("adminDaySelect")?.addEventListener("change", (e) => {
+		state.currentDay = e.target.value;
+		renderAdminPage();
+	});
 }
 
 function handleAdminLogin(event) {
@@ -202,8 +254,9 @@ function handleAdminInput(event) {
 	if (target.matches("[data-room-edit]")) {
 		const idx = Number(target.dataset.periodIndex);
 		const key = target.dataset.blockKey;
-		if (schedule.periods[idx]) {
-			schedule.periods[idx][key].room = target.value;
+		const block = schedule.weeks[state.currentWeekIdx][state.currentDay][idx][key];
+		if (block) {
+			block.room = target.value;
 			saveSchedule(schedule);
 			updateSaveStatus();
 		}
@@ -364,6 +417,12 @@ function renderAdminPage() {
 		heroTitle.textContent = `Editor: ${user.name}`;
 	}
 
+	// Update dropdowns to match state
+	const wSelect = document.getElementById("adminWeekSelect");
+	if (wSelect) wSelect.value = state.currentWeekIdx;
+	const dSelect = document.getElementById("adminDaySelect");
+	if (dSelect) dSelect.value = state.currentDay;
+
 	document.getElementById("adminSchedule").innerHTML = renderAdminTable(schedule);
 	document.getElementById("adminClassCards").innerHTML = renderClassCards();
 	document.getElementById("eventsEditor").innerHTML = renderEventsEditor(schedule);
@@ -371,10 +430,11 @@ function renderAdminPage() {
 	setupDragAndDrop();
 }
 
-function renderPublicTable(schedule) {
+function renderPublicTable(schedule, weekIdx, day) {
+	const periods = schedule.weeks[weekIdx][day];
 	let html = `<table class="schedule-table"><thead><tr><th class="period-col">Period</th><th class="block-col">Block X</th><th class="block-col">Block Y</th></tr></thead><tbody>`;
-	schedule.periods.forEach((p, idx) => {
-		const prev = idx > 0 ? schedule.periods[idx-1] : null;
+	periods.forEach((p, idx) => {
+		const prev = idx > 0 ? periods[idx-1] : null;
 		const skipX = prev && Number(prev.x.length) === 2;
 		const skipY = prev && Number(prev.y.length) === 2;
 		html += `<tr class="period-row">
@@ -403,9 +463,10 @@ function renderPublicTable(schedule) {
 }
 
 function renderAdminTable(schedule) {
+	const periods = schedule.weeks[state.currentWeekIdx][state.currentDay];
 	let html = `<table class="schedule-table admin-table"><thead><tr><th class="period-col">Period</th><th class="block-col">Block X</th><th class="block-col">Block Y</th></tr></thead><tbody>`;
-	schedule.periods.forEach((p, idx) => {
-		const prev = idx > 0 ? schedule.periods[idx - 1] : null;
+	periods.forEach((p, idx) => {
+		const prev = idx > 0 ? periods[idx - 1] : null;
 		const skipX = prev && Number(prev.x.length) === 2;
 		const skipY = prev && Number(prev.y.length) === 2;
 		html += `<tr>
@@ -426,16 +487,14 @@ function renderAdminBlock(block, key, idx) {
 	const canDouble = idx < 3;
 	const inputId = `room-edit-${idx}-${key}`;
 
-	// Check for conflicts (same course appearing in different non-adjacent periods in X or Y)
-	const schedule = state.schedule;
+	// Check for conflicts within the current week and day
+	const periods = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
 	let hasConflict = false;
 	if (block.course !== "None") {
-		schedule.periods.forEach((p, pIdx) => {
+		periods.forEach((p, pIdx) => {
 			if (pIdx === idx) return;
 			if (p[key].course === block.course) {
-				// If they are not adjacent, it's a conflict
 				if (Math.abs(pIdx - idx) > 1) hasConflict = true;
-				// If they are adjacent but not marked as a double, it's a conflict
 				const isAdjacent = Math.abs(pIdx - idx) === 1;
 				if (isAdjacent && Number(block.length) !== 2 && Number(p[key].length) !== 2) {
 					hasConflict = true;
@@ -527,7 +586,7 @@ function handleSelection(zone, rawData, event) {
 	const schedule = state.schedule;
 
 	// Check if dropping into the bottom half of a double period
-	const existingTargetBlock = schedule.periods[targetIdx][targetKey];
+	const existingTargetBlock = schedule.weeks[state.currentWeekIdx][state.currentDay][targetIdx][targetKey];
 	if (Number(existingTargetBlock.length) === 2 && event) {
 		const rect = zone.getBoundingClientRect();
 		if ((event.clientY - rect.top) > rect.height / 2) {
@@ -536,27 +595,24 @@ function handleSelection(zone, rawData, event) {
 	}
 
 	if (rawData.startsWith('library:')) {
-		// Replace current slot with library selection
 		const course = rawData.replace('library:', '');
 		assignCourseToZone(targetIdx, targetKey, course);
 	} else if (rawData.startsWith('table:')) {
-		// SWAP Logic
 		const source = JSON.parse(rawData.replace('table:', ''));
 		const sIdx = Number(source.idx);
 		const sKey = source.key;
 
 		if (sIdx === targetIdx && sKey === targetKey) return;
 
-		const sBlock = schedule.periods[sIdx][sKey];
-		const tBlock = schedule.periods[targetIdx][targetKey];
+		const sBlock = schedule.weeks[state.currentWeekIdx][state.currentDay][sIdx][sKey];
+		const tBlock = schedule.weeks[state.currentWeekIdx][state.currentDay][targetIdx][targetKey];
 
-		// Displace: Move target data to source slot, and source data to target slot
 		const temp = { ...sBlock };
 
 		sBlock.course = tBlock.course;
 		sBlock.teacher = tBlock.teacher;
 		sBlock.room = tBlock.room;
-		sBlock.length = 1; // Reset lengths during swap to prevent glitches
+		sBlock.length = 1;
 
 		tBlock.course = temp.course;
 		tBlock.teacher = temp.teacher;
@@ -568,7 +624,7 @@ function handleSelection(zone, rawData, event) {
 }
 
 function assignCourseToZone(idx, key, course) {
-	const block = state.schedule.periods[idx][key];
+	const block = state.schedule.weeks[state.currentWeekIdx][state.currentDay][idx][key];
 	block.course = course;
 	const lib = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
 	block.teacher = lib.teacher;
@@ -614,18 +670,42 @@ function renderEventFeed(schedule) {
 }
 
 function ensureScheduleShape(s) {
-	const defaultPeriods = JSON.parse(JSON.stringify(DEFAULT_SCHEDULE.periods));
-	if (!s || !Array.isArray(s.periods)) return { periods: defaultPeriods, events: [] };
+	if (!s) return JSON.parse(JSON.stringify(DEFAULT_SCHEDULE));
 
-	const ps = [1, 2, 3, 4].map((num, i) => {
-		const existing = s.periods[i];
-		return {
-			period: num,
-			x: normalizeBlock(existing?.x),
-			y: normalizeBlock(existing?.y)
-		};
+	const newSchedule = {
+		weeks: s.weeks || [createEmptyWeek(), createEmptyWeek()],
+		events: Array.isArray(s.events) ? s.events : []
+	};
+
+	// Migration logic: If old "periods" format exists, populate all days with it
+	if (Array.isArray(s.periods) && !s.weeks) {
+		const migratedWeek = {};
+		["MON", "TUE", "WED", "THU", "FRI"].forEach(day => {
+			migratedWeek[day] = s.periods.map(p => ({
+				period: p.period,
+				x: normalizeBlock(p.x),
+				y: normalizeBlock(p.y)
+			}));
+		});
+		newSchedule.weeks = [migratedWeek, JSON.parse(JSON.stringify(migratedWeek))];
+	}
+
+	// Final validation of the week structure
+	newSchedule.weeks.forEach((week, wIdx) => {
+		["MON", "TUE", "WED", "THU", "FRI"].forEach(day => {
+			if (!week[day]) week[day] = createEmptyWeek().MON;
+			week[day] = [1, 2, 3, 4].map((num, i) => {
+				const existing = week[day][i];
+				return {
+					period: num,
+					x: normalizeBlock(existing?.x),
+					y: normalizeBlock(existing?.y)
+				};
+			});
+		});
 	});
-	return { periods: ps, events: Array.isArray(s.events) ? s.events : [] };
+
+	return newSchedule;
 }
 
 function normalizeBlock(b) {
@@ -667,13 +747,18 @@ function getLoggedInUser() {
 	const data = localStorage.getItem(AUTH_USER_KEY);
 	return data ? JSON.parse(data) : null;
 }
-function resetSampleSchedule() { if (confirm('Reset to default for EVERYONE?')) { saveSchedule(DEFAULT_SCHEDULE); } }
+function resetSampleSchedule() {
+	if (confirm('Reset to default for EVERYONE?')) {
+		saveSchedule(JSON.parse(JSON.stringify(DEFAULT_SCHEDULE)));
+	}
+}
 function clearAllClasses() {
-	if (confirm('Clear ALL classes from the current schedule?')) {
+	if (confirm('Clear ALL classes from the current Week and Day?')) {
 		const schedule = state.schedule;
-		schedule.periods.forEach(p => {
-			p.x = { course: "None", teacher: "", room: "", length: 1, note: "" };
-			p.y = { course: "None", teacher: "", room: "", length: 1, note: "" };
+		const periods = schedule.weeks[state.currentWeekIdx][state.currentDay];
+		periods.forEach(p => {
+			p.x = { ...EMPTY_BLOCK };
+			p.y = { ...EMPTY_BLOCK };
 		});
 		saveSchedule(schedule);
 	}
