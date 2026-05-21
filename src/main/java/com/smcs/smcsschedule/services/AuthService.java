@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
-
+//comment hhaha
 	private static final String ADMIN_USERNAME = "charles";
 	private static final String ADMIN_PASSWORD = "SMCS";
 
