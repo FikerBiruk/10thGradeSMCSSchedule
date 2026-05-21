@@ -16,8 +16,15 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 const AUTH_KEY = "smcs-schedule-admin-auth";
-const ADMIN_USERNAME = "charles";
-const ADMIN_PASSWORD = "SMCS";
+const AUTH_USER_KEY = "smcs-schedule-admin-user";
+
+const TEACHERS = {
+	"charles": { password: "SMCS", name: "Mr. Yu", course: "Bio" },
+	"hallisey": { password: "SMCS", name: "Mrs. Hallisey", course: "CS" },
+	"kingman": { password: "SMCS", name: "Mr. Kingman", course: "ESS" },
+	"bayonet": { password: "SMCS", name: "Ms. Bayonet", course: "FOT" }
+};
+
 const COURSES = ["Bio", "CS", "ESS", "FOT"];
 
 const COURSE_LIBRARY = {
@@ -129,10 +136,17 @@ function initAdminPage() {
 
 function handleAdminLogin(event) {
 	event.preventDefault();
-	const u = document.getElementById("adminUsername").value.trim();
+	const u = document.getElementById("adminUsername").value.trim().toLowerCase();
 	const p = document.getElementById("adminPassword").value;
-	if (u === ADMIN_USERNAME && p === ADMIN_PASSWORD) {
+
+	const teacher = TEACHERS[u];
+	if (teacher && teacher.password === p) {
 		localStorage.setItem(AUTH_KEY, "ok");
+		localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
+			username: u,
+			name: teacher.name,
+			course: teacher.course
+		}));
 		location.reload();
 	} else {
 		const err = document.getElementById("loginError");
@@ -143,6 +157,7 @@ function handleAdminLogin(event) {
 
 function handleLogout() {
 	localStorage.removeItem(AUTH_KEY);
+	localStorage.removeItem(AUTH_USER_KEY);
 	location.reload();
 }
 
@@ -220,6 +235,14 @@ function renderPublicPage() {
 
 function renderAdminPage() {
 	const schedule = state.schedule;
+	const user = getLoggedInUser();
+
+	// Update header with teacher name
+	const heroTitle = document.querySelector(".hero h1");
+	if (heroTitle && user) {
+		heroTitle.textContent = `Editor: ${user.name}`;
+	}
+
 	document.getElementById("adminSchedule").innerHTML = renderAdminTable(schedule);
 	document.getElementById("adminClassCards").innerHTML = renderClassCards();
 	document.getElementById("eventsEditor").innerHTML = renderEventsEditor(schedule);
@@ -515,6 +538,10 @@ function updateSaveStatus() {
 }
 
 function isAuthenticated() { return localStorage.getItem(AUTH_KEY) === 'ok'; }
+function getLoggedInUser() {
+	const data = localStorage.getItem(AUTH_USER_KEY);
+	return data ? JSON.parse(data) : null;
+}
 function resetSampleSchedule() { if (confirm('Reset to default for EVERYONE?')) { saveSchedule(DEFAULT_SCHEDULE); } }
 function clearAllClasses() {
 	if (confirm('Clear ALL classes from the current schedule?')) {

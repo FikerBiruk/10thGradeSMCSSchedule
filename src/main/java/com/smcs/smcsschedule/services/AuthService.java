@@ -8,14 +8,20 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
-//comment hhahass
-	private static final String ADMIN_USERNAME = "charles";
-	private static final String ADMIN_PASSWORD = "SMCS";
+
+	private static final Map<String, String> TEACHERS = Map.of(
+		"charles", "SMCS",
+		"hallisey", "SMCS",
+		"kingman", "SMCS",
+		"bayonet", "SMCS"
+	);
 
 	private final Map<String, String> sessionTokens = new HashMap<>();
 
 	public synchronized String login(String username, String password) {
-		if (!ADMIN_USERNAME.equals(username) || !ADMIN_PASSWORD.equals(password)) {
+		String expectedPassword = TEACHERS.get(username.toLowerCase());
+		
+		if (expectedPassword == null || !expectedPassword.equals(password)) {
 			return null;
 		}
 
