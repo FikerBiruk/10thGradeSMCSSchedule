@@ -114,6 +114,27 @@ function applyAutoMerge(schedule) {
 function initPublicPage() {
 	renderPublicPage();
 	setupSettingsMenu();
+
+	document.getElementById("weekViewBtn")?.addEventListener("click", () => {
+		state.publicView = 'week';
+		updateViewToggle();
+		renderPublicPage();
+	});
+
+	document.getElementById("dayViewBtn")?.addEventListener("click", () => {
+		state.publicView = 'day';
+		updateViewToggle();
+		renderPublicPage();
+	});
+}
+
+function updateViewToggle() {
+	const weekBtn = document.getElementById("weekViewBtn");
+	const dayBtn = document.getElementById("dayViewBtn");
+	if (weekBtn && dayBtn) {
+		weekBtn.classList.toggle("active", state.publicView === 'week');
+		dayBtn.classList.toggle("active", state.publicView === 'day');
+	}
 }
 
 function initAdminPage() {
@@ -230,8 +251,63 @@ function handleAdminClick(event) {
 
 function renderPublicPage() {
 	const schedule = state.schedule;
-	document.getElementById("publicSchedule").innerHTML = renderPublicTable(schedule);
+	const container = document.getElementById("publicSchedule");
+
+	// Ensure buttons match state
+	updateViewToggle();
+
+	if (state.publicView === 'day') {
+		container.innerHTML = renderPublicTable(schedule);
+	} else {
+		container.innerHTML = renderFullWeekGrid(schedule);
+	}
+
 	document.getElementById("publicEvents").innerHTML = renderEventFeed(schedule);
+}
+
+function renderFullWeekGrid(schedule) {
+	const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+
+	// Get current week dates
+	const now = new Date();
+	const first = now.getDate() - now.getDay() + 1; // Monday
+	const weekDates = dayLabels.map((_, i) => {
+		const d = new Date(now);
+		d.setDate(first + i);
+		return d.getDate();
+	});
+
+	let html = `<div class="full-week-grid">
+		<div class="week-corner"></div>
+		${dayLabels.map((label, i) => `
+			<div class="week-day-header">
+				<div class="week-day-name">${label}</div>
+				<div class="week-day-date">${weekDates[i]}</div>
+			</div>
+		`).join('')}`;
+
+	[1, 2, 3, 4].forEach(period => {
+		html += `<div class="week-period-row">
+			<div class="week-period-label">P${period}</div>
+			${[0, 1, 2, 3, 4].map(dayIdx => {
+				const pData = schedule.periods[period - 1];
+				const block = pData.x;
+				const isEmpty = block.course === "None";
+
+				return `
+					<div class="week-cell ${isEmpty ? '' : 'has-class'}">
+						${isEmpty ? '' : `
+							<div class="week-course">${escapeHtml(block.course)}</div>
+							<div class="week-room">${escapeHtml(block.room)}</div>
+						`}
+					</div>
+				`;
+			}).join('')}
+		</div>`;
+	});
+
+	html += `</div>`;
+	return html;
 }
 
 function renderAdminPage() {
@@ -494,13 +570,17 @@ function renderEventFeed(schedule) {
 }
 
 function ensureScheduleShape(s) {
-	if (!s || !Array.isArray(s.periods)) return JSON.parse(JSON.stringify(DEFAULT_SCHEDULE));
-	let ps = s.periods;
-	ps = ps.slice(0, 4).map((p, i) => ({
-		period: i + 1,
-		x: normalizeBlock(p.x),
-		y: normalizeBlock(p.y)
-	}));
+	const defaultPeriods = JSON.parse(JSON.stringify(DEFAULT_SCHEDULE.periods));
+	if (!s || !Array.isArray(s.periods)) return { periods: defaultPeriods, events: [] };
+
+	const ps = [1, 2, 3, 4].map((num, i) => {
+		const existing = s.periods[i];
+		return {
+			period: num,
+			x: normalizeBlock(existing?.x),
+			y: normalizeBlock(existing?.y)
+		};
+	});
 	return { periods: ps, events: Array.isArray(s.events) ? s.events : [] };
 }
 
