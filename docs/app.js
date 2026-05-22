@@ -1,4 +1,4 @@
-// Version 5.1 - Multi-Week, Admin Week Editor & UI Highlights
+// Version 5.2 - Simplified Week View, Fixed Drag/Swap, and Enhanced Highlights
 
 const firebaseConfig = {
 	apiKey: "AIzaSyBchrPCAav08CfPBKSTmaHvMrEoid2NxEU",
@@ -58,7 +58,7 @@ const state = {
 	darkMode: true,
 	selectedCourse: null,
 	publicView: 'week',
-	adminView: 'day', // 'day' or 'week'
+	adminView: 'day',
 	currentWeekIdx: 0,
 	currentDay: "MON",
 };
@@ -110,47 +110,24 @@ function applyAutoMerge(schedule) {
 function initPublicPage() {
 	document.getElementById("weekViewBtn")?.addEventListener("click", () => { state.publicView = 'week'; renderPublicPage(); });
 	document.getElementById("dayViewBtn")?.addEventListener("click", () => { state.publicView = 'day'; renderPublicPage(); });
-	document.getElementById("week0Btn")?.addEventListener("click", () => { state.currentWeekIdx = 0; renderPublicPage(); });
-	document.getElementById("week1Btn")?.addEventListener("click", () => { state.currentWeekIdx = 1; renderPublicPage(); });
 	setupSettingsMenu();
 	renderPublicPage();
 }
 
-function updateViewToggle() {
+function renderPublicPage() {
+	const container = document.getElementById("publicSchedule");
+
+	// Buttons active state
 	document.getElementById("weekViewBtn")?.classList.toggle("active", state.publicView === 'week');
 	document.getElementById("dayViewBtn")?.classList.toggle("active", state.publicView === 'day');
 
-	const ranges = getWeekDateRanges();
-	const w0 = document.getElementById("week0Btn");
-	const w1 = document.getElementById("week1Btn");
-	if (w0) { w0.textContent = ranges[0]; w0.classList.toggle("active", state.currentWeekIdx === 0); }
-	if (w1) { w1.textContent = ranges[1]; w1.classList.toggle("active", state.currentWeekIdx === 1); }
-}
-
-function getWeekDateRanges() {
-	const now = new Date();
-	const day = now.getDay();
-	const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-	const monday = new Date(now.setDate(diff));
-	const format = (d) => `${d.toLocaleString('default', { month: 'short' })} ${d.getDate()}`;
-	const getRange = (offset) => {
-		const start = new Date(monday); start.setDate(monday.getDate() + offset);
-		const end = new Date(monday); end.setDate(monday.getDate() + offset + 4);
-		return `${format(start)} - ${format(end)}`;
-	};
-	return [getRange(0), getRange(7)];
-}
-
-function renderPublicPage() {
-	updateViewToggle();
-	const container = document.getElementById("publicSchedule");
 	let html = renderLiveTimer();
 	if (state.publicView === 'day') {
 		const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 		let today = days[new Date().getDay()];
 		if (!DAYS.includes(today)) today = "MON";
-		html += `<h2 class="day-view-title">${today} Schedule - Week ${state.currentWeekIdx + 1}</h2>`;
-		html += renderTable(state.schedule.weeks[state.currentWeekIdx][today], false);
+		html += `<h2 class="day-view-title">${today} Schedule</h2>`;
+		html += renderTable(state.schedule.weeks[0][today], false);
 	} else {
 		html += renderFullWeekView();
 	}
@@ -159,28 +136,41 @@ function renderPublicPage() {
 }
 
 function renderFullWeekView() {
-	const weekData = state.schedule.weeks[state.currentWeekIdx];
+	const weekData = state.schedule.weeks[0]; // Student always sees Week 1 by default
 	const daysEnum = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 	const todayDay = daysEnum[new Date().getDay()];
 
 	const renderGroup = (key, label) => {
 		let h = `<div class="week-group-section"><h3 class="week-group-title ${key}">${label}</h3><div class="full-week-grid"><div class="week-corner"></div>`;
+
 		DAYS.forEach(day => {
 			const isToday = day === todayDay;
-			h += `<div class="week-day-header ${isToday ? 'is-today' : ''}"><div class="week-day-name">${day}</div></div>`;
+			h += `<div class="week-day-header ${isToday ? 'is-today' : ''}">${day}</div>`;
 		});
-		[1, 2, 3, 4].forEach(pNum => {
-			h += `<div class="week-period-row"><div class="week-period-label">P${pNum}</div>`;
+
+		for (let pIdx = 0; pIdx < 4; pIdx++) {
+			h += `<div class="week-period-row"><div class="week-period-label">P${pIdx+1}</div>`;
 			DAYS.forEach(day => {
 				const isToday = day === todayDay;
-				const block = weekData[day][pNum-1][key];
-				const empty = block.course === "None";
-				h += `<div class="week-cell ${key} ${empty ? 'empty' : 'has-class'} ${isToday ? 'is-today' : ''}">
-					${empty ? '' : `<div class="week-course">${escapeHtml(block.course)}</div><div class="week-room">Rm ${escapeHtml(block.room)}</div>`}
-				</div>`;
+				const periods = weekData[day];
+				const block = periods[pIdx][key];
+
+				// Handle Rowspanning logic for Week View
+				const prev = pIdx > 0 ? periods[pIdx-1] : null;
+				const isCovered = prev && Number(prev[key].length) === 2;
+
+				if (isCovered) {
+					h += `<div class="week-cell covered ${isToday ? 'is-today' : ''}"></div>`;
+				} else {
+					const isDouble = Number(block.length) === 2;
+					const empty = block.course === "None";
+					h += `<div class="week-cell ${key} ${empty ? 'empty' : 'has-class'} ${isToday ? 'is-today' : ''} ${isDouble ? 'row-span-2' : ''}">
+						${empty ? '' : `<div class="week-course">${escapeHtml(block.course)}</div><div class="week-room">Rm ${escapeHtml(block.room)}</div>`}
+					</div>`;
+				}
 			});
 			h += `</div>`;
-		});
+		}
 		return h + `</div></div>`;
 	};
 	return `<div class="multi-week-container">${renderGroup('x', 'Block X')}${renderGroup('y', 'Block Y')}</div>`;
@@ -242,10 +232,10 @@ function renderAdminWeekGrid() {
 			const bx = weekData[day][pNum-1].x;
 			const by = weekData[day][pNum-1].y;
 			h += `<div class="week-cell admin-cell">
-				<div class="week-sub-cell x ${bx.course==='None'?'empty':'has-class'}" data-day="${day}" data-period-index="${pNum-1}" data-block="x">
+				<div class="week-sub-cell x ${bx.course==='None'?'empty':'has-class'}" draggable="${bx.course!=='None'}" data-day="${day}" data-period-index="${pNum-1}" data-block="x">
 					<span class="sub-label">X</span>${bx.course==='None'?'':bx.course}
 				</div>
-				<div class="week-sub-cell y ${by.course==='None'?'empty':'has-class'}" data-day="${day}" data-period-index="${pNum-1}" data-block="y">
+				<div class="week-sub-cell y ${by.course==='None'?'empty':'has-class'}" draggable="${by.course!=='None'}" data-day="${day}" data-period-index="${pNum-1}" data-block="y">
 					<span class="sub-label">Y</span>${by.course==='None'?'':by.course}
 				</div>
 			</div>`;
@@ -276,27 +266,32 @@ function renderAdminBlock(block, key, idx) {
 	</div>`;
 }
 
+function renderClassCards() {
+	return COURSES.map(c => `<div class="class-card draggable-card" draggable="true" data-course="${c}"><div class="card-title">${c}</div><div class="card-teacher">${COURSE_LIBRARY[c].teacher}</div><div class="card-room">Room ${COURSE_LIBRARY[c].room}</div></div>`).join('');
+}
+
 function setupDragAndDrop() {
 	const cards = document.querySelectorAll('.draggable-card');
 	const tableBlocks = document.querySelectorAll('.admin-block-cell[draggable="true"]');
+	const weekBlocks = document.querySelectorAll('.week-sub-cell[draggable="true"]');
+
 	const dayZones = document.querySelectorAll('.admin-table td.block-col');
 	const weekZones = document.querySelectorAll('.week-sub-cell');
 
 	cards.forEach(c => c.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', 'lib:' + c.dataset.course)));
-	document.querySelectorAll('.draggable-card').forEach(c => c.addEventListener('click', () => {
-		document.querySelectorAll('.draggable-card').forEach(card => card.classList.remove('active-selection'));
-		if (state.selectedCourse === c.dataset.course) state.selectedCourse = null;
-		else { state.selectedCourse = c.dataset.course; c.classList.add('active-selection'); }
-	}));
 
-	tableBlocks.forEach(b => b.addEventListener('dragstart', e => {
-		const info = { day: state.currentDay, idx: b.dataset.periodIndex, key: b.dataset.blockKey };
-		e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(info));
-	}));
+	[...tableBlocks, ...weekBlocks].forEach(b => {
+		b.addEventListener('dragstart', e => {
+			const info = { day: b.dataset.day || state.currentDay, idx: b.dataset.periodIndex, key: b.dataset.blockKey || b.dataset.block };
+			e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(info));
+		});
+	});
 
 	const handleDrop = (e, zone, d, idx, key) => {
 		e.preventDefault(); zone.classList.remove('drag-over');
-		handleSelection(idx, key, e.dataTransfer.getData('text/plain'), e, zone, d);
+		const raw = e.dataTransfer.getData('text/plain');
+		if (!raw) return;
+		handleSelection(idx, key, raw, e, zone, d);
 	};
 
 	dayZones.forEach(z => {
@@ -319,9 +314,11 @@ function setupDragAndDrop() {
 }
 
 function handleSelection(tIdx, key, raw, event, zone, day) {
-	if (!raw) return;
 	const week = state.schedule.weeks[state.currentWeekIdx];
-	if (Number(week[day][tIdx][key].length) === 2 && event) {
+	const currentBlock = week[day][tIdx][key];
+
+	// Rowspan detection for Day View
+	if (Number(currentBlock.length) === 2 && event && zone.classList.contains('block-col')) {
 		const rect = zone.getBoundingClientRect();
 		if ((event.clientY - rect.top) > rect.height / 2) tIdx++;
 	}
@@ -334,6 +331,7 @@ function handleSelection(tIdx, key, raw, event, zone, day) {
 		block.teacher = lib.teacher; block.room = lib.room; block.length = 1;
 	} else if (raw.startsWith('table:')) {
 		const src = JSON.parse(raw.replace('table:', ''));
+		if (src.day == day && src.idx == tIdx && src.key == key) return;
 		const sBlock = week[src.day][src.idx][src.key];
 		const tBlock = week[day][tIdx][key];
 		const temp = { ...sBlock };
