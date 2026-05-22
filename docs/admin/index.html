@@ -12,19 +12,19 @@
 		<section id="loginPanel" class="surface auth-card">
 			<p class="eyebrow">Admin Access</p>
 			<h2>Sign in to edit the schedule</h2>
-			<p class="muted-copy">Use the hardcoded admin account to manage the schedule.</p>
+			<p class="lede">Use your teacher account (e.g. charles, hallisey) with the standard password.</p>
 			<form id="adminLoginForm" class="auth-form">
 				<label class="field">
 					<span>Username</span>
-					<input id="adminUsername" type="text" autocomplete="username" required>
+					<input id="adminUsername" type="text" autocomplete="username" required placeholder="charles">
 				</label>
 				<label class="field">
 					<span>Password</span>
-					<input id="adminPassword" type="password" autocomplete="current-password" required>
+					<input id="adminPassword" type="password" autocomplete="current-password" required placeholder="••••••••">
 				</label>
 				<button class="primary-btn" type="submit">Unlock Editor</button>
-				<p id="loginError" class="error-text" hidden></p>
-				<div class="auth-footer">
+				<p id="loginError" class="error-text" hidden style="color: var(--danger); font-size: 0.8rem; margin-top: 8px;"></p>
+				<div class="auth-footer" style="text-align: center; margin-top: 16px;">
 					<a href="../" class="ghost-btn">← Back to Schedule</a>
 				</div>
 			</form>
@@ -35,10 +35,10 @@
 				<div class="hero-copy">
 					<p class="eyebrow">SMCS Schedule Admin</p>
 					<h1>Schedule Editor</h1>
-					<p class="lede">Drag classes from the panel and drop them into the schedule. Click room numbers to edit. Double periods are automatically detected.</p>
+					<p class="lede">Drag classes from the panel and drop them into the schedule. Click room numbers to edit.</p>
 				</div>
 				<div class="hero-actions">
-					<a class="ghost-btn" href="../">Public View</a>
+					<a class="secondary-btn" href="../">Public View</a>
 					<button id="logoutButton" class="ghost-btn" type="button">Logout</button>
 					<button id="settingsButton" class="secondary-btn" type="button">Settings</button>
 					<div id="settingsMenu" class="settings-menu hidden">
@@ -48,17 +48,13 @@
 				</div>
 			</header>
 
-			<div class="surface toolbar-panel">
-				<div class="toolbar-actions">
+			<div class="surface toolbar-panel" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 16px; flex-wrap: wrap;">
+				<div class="toolbar-actions" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
 					<div class="view-toggle">
 						<button id="adminDayViewBtn" class="toggle-btn active">Day Editor</button>
 						<button id="adminWeekViewBtn" class="toggle-btn">Week Editor</button>
 					</div>
 					<div class="admin-nav-group">
-						<select id="adminWeekSelect" class="secondary-btn">
-							<option value="0">Week 1</option>
-							<option value="1">Week 2</option>
-						</select>
 						<select id="adminDaySelect" class="secondary-btn">
 							<option value="MON">Monday</option>
 							<option value="TUE">Tuesday</option>
@@ -67,36 +63,40 @@
 							<option value="FRI">Friday</option>
 						</select>
 					</div>
-					<button id="resetButton" class="secondary-btn" type="button">Reset to Default</button>
-					<button id="clearAllButton" class="danger-btn" type="button">Clear All Classes</button>
-					<button id="exportButton" class="ghost-btn" type="button">Export JSON</button>
+					<button id="resetButton" class="secondary-btn" type="button">Reset</button>
+					<button id="clearAllButton" class="danger-btn" type="button">Clear Day</button>
 				</div>
-				<p id="saveStatus" class="save-status">Synced with Cloud</p>
+				<p id="saveStatus" class="save-status" style="font-weight: 800; color: var(--accent); font-size: 0.75rem; text-transform: uppercase;">Synced</p>
 			</div>
 
 			<div class="admin-grid-2">
 				<section class="surface editor-panel">
-					<p class="eyebrow">Schedule Editor</p>
-					<h2>Periods & Blocks</h2>
-					<div id="adminSchedule" class="period-editor-list"></div>
+					<p class="eyebrow">Active View</p>
+					<h2>Schedule Layout</h2>
+					<div id="adminSchedule" class="period-editor-list" style="margin-top: 24px;"></div>
 				</section>
 
 				<aside class="sidebar-stack">
 					<section class="surface info-card">
-						<p class="eyebrow">Classes</p>
+						<p class="eyebrow">Library</p>
 						<h2>Drag to assign</h2>
-						<div id="adminClassCards" class="class-cards-panel"></div>
+						<div id="adminClassCards" class="class-cards-panel" style="margin-top: 16px;"></div>
+					</section>
+
+					<section class="surface info-card">
+						<p class="eyebrow">Export</p>
+						<button id="exportButton" class="secondary-btn" style="width: 100%;" type="button">Download JSON</button>
 					</section>
 				</aside>
 			</div>
 
-			<section class="surface info-card full-width-section">
-				<div class="panel-head compact-head">
+			<section class="surface info-card" style="margin-top: 24px;">
+				<div class="panel-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
 					<div>
-						<p class="eyebrow">Special Events</p>
-						<h2>Manage events</h2>
+						<p class="eyebrow">Events</p>
+						<h2>Manage Bulletin</h2>
 					</div>
-					<button id="addEventButton" class="secondary-btn" type="button">Add Event</button>
+					<button id="addEventButton" class="primary-btn" type="button">Add Event</button>
 				</div>
 				<div id="eventsEditor" class="event-editor-list"></div>
 			</section>

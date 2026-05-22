@@ -1,4 +1,4 @@
-// Version 5.2 - Simplified Week View, Fixed Drag/Swap, and Enhanced Highlights
+// Version 5.3 - Fixed Week View Grid, Added Login Logic, and Removed Week 2
 
 const firebaseConfig = {
 	apiKey: "AIzaSyBchrPCAav08CfPBKSTmaHvMrEoid2NxEU",
@@ -49,7 +49,7 @@ function createEmptyWeek() {
 }
 
 const DEFAULT_SCHEDULE = {
-	weeks: [createEmptyWeek(), createEmptyWeek()],
+	weeks: [createEmptyWeek()],
 	events: [{ period: "all", title: "Welcome Assembly", note: "Gym after Period 2", description: "" }],
 };
 
@@ -117,7 +117,6 @@ function initPublicPage() {
 function renderPublicPage() {
 	const container = document.getElementById("publicSchedule");
 
-	// Buttons active state
 	document.getElementById("weekViewBtn")?.classList.toggle("active", state.publicView === 'week');
 	document.getElementById("dayViewBtn")?.classList.toggle("active", state.publicView === 'day');
 
@@ -136,7 +135,7 @@ function renderPublicPage() {
 }
 
 function renderFullWeekView() {
-	const weekData = state.schedule.weeks[0]; // Student always sees Week 1 by default
+	const weekData = state.schedule.weeks[0];
 	const daysEnum = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 	const todayDay = daysEnum[new Date().getDay()];
 
@@ -155,16 +154,16 @@ function renderFullWeekView() {
 				const periods = weekData[day];
 				const block = periods[pIdx][key];
 
-				// Handle Rowspanning logic for Week View
 				const prev = pIdx > 0 ? periods[pIdx-1] : null;
 				const isCovered = prev && Number(prev[key].length) === 2;
 
 				if (isCovered) {
-					h += `<div class="week-cell covered ${isToday ? 'is-today' : ''}"></div>`;
+					// We don't render anything, but the grid will have a gap if we don't handle it with spans
+					// In a display: contents row, we must ensure the previous cell had grid-row: span 2
 				} else {
 					const isDouble = Number(block.length) === 2;
 					const empty = block.course === "None";
-					h += `<div class="week-cell ${key} ${empty ? 'empty' : 'has-class'} ${isToday ? 'is-today' : ''} ${isDouble ? 'row-span-2' : ''}">
+					h += `<div class="week-cell ${key} ${empty ? 'empty' : 'has-class'} ${isToday ? 'is-today' : ''} ${isDouble ? 'row-span-2' : ''}" style="${isDouble ? 'grid-row: span 2;' : ''}">
 						${empty ? '' : `<div class="week-course">${escapeHtml(block.course)}</div><div class="week-room">Rm ${escapeHtml(block.room)}</div>`}
 					</div>`;
 				}
@@ -183,8 +182,8 @@ function renderTable(periods, isAdmin) {
 		const skipX = prev && Number(prev.x.length) === 2;
 		const skipY = prev && Number(prev.y.length) === 2;
 		html += `<tr><td class="period-col"><span class="period-label">P${p.period}</span></td>
-			${skipX ? '' : `<td class="block-col" data-period-index="${idx}" data-block="x" ${Number(p.x.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.x, 'x', idx) : renderPublicBlock(p.x)}</td>`}
-			${skipY ? '' : `<td class="block-col" data-period-index="${idx}" data-block="y" ${Number(p.y.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.y, 'y', idx) : renderPublicBlock(p.y)}</td>`}
+			${skipX ? '' : `<td class="block-col block-x" data-period-index="${idx}" data-block="x" ${Number(p.x.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.x, 'x', idx) : renderPublicBlock(p.x)}</td>`}
+			${skipY ? '' : `<td class="block-col block-y" data-period-index="${idx}" data-block="y" ${Number(p.y.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.y, 'y', idx) : renderPublicBlock(p.y)}</td>`}
 		</tr>`;
 	});
 	return html + `</tbody></table>`;
@@ -317,7 +316,6 @@ function handleSelection(tIdx, key, raw, event, zone, day) {
 	const week = state.schedule.weeks[state.currentWeekIdx];
 	const currentBlock = week[day][tIdx][key];
 
-	// Rowspan detection for Day View
 	if (Number(currentBlock.length) === 2 && event && zone.classList.contains('block-col')) {
 		const rect = zone.getBoundingClientRect();
 		if ((event.clientY - rect.top) > rect.height / 2) tIdx++;
@@ -341,10 +339,35 @@ function handleSelection(tIdx, key, raw, event, zone, day) {
 	saveSchedule(state.schedule);
 }
 
+function handleAdminLogin(event) {
+	event.preventDefault();
+	const user = document.getElementById("adminUsername").value.toLowerCase();
+	const pass = document.getElementById("adminPassword").value;
+	const error = document.getElementById("loginError");
+
+	if (TEACHERS[user] && TEACHERS[user].password === pass) {
+		localStorage.setItem(AUTH_KEY, 'ok');
+		localStorage.setItem(AUTH_USER_KEY, JSON.stringify(TEACHERS[user]));
+		location.reload();
+	} else {
+		error.textContent = "Invalid credentials";
+		error.hidden = false;
+	}
+}
+
+function handleLogout() {
+	localStorage.removeItem(AUTH_KEY);
+	localStorage.removeItem(AUTH_USER_KEY);
+	location.reload();
+}
+
 function initAdminPage() {
-	if (!isAuthenticated()) { document.body.classList.add('auth-mode'); return; }
-	document.body.classList.remove('auth-mode');
-	document.getElementById("loginPanel").hidden = true; document.getElementById("adminApp").hidden = false;
+	if (!isAuthenticated()) {
+		document.getElementById("adminLoginForm")?.addEventListener("submit", handleAdminLogin);
+		return;
+	}
+	document.getElementById("loginPanel").hidden = true;
+	document.getElementById("adminApp").hidden = false;
 
 	const daysEnum = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 	const today = daysEnum[new Date().getDay()];
@@ -354,12 +377,27 @@ function initAdminPage() {
 	document.getElementById("adminWeekViewBtn")?.addEventListener("click", () => { state.adminView = 'week'; renderAdminPage(); });
 	document.getElementById("adminWeekSelect")?.addEventListener("change", e => { state.currentWeekIdx = Number(e.target.value); renderAdminPage(); });
 	document.getElementById("adminDaySelect")?.addEventListener("change", e => { state.currentDay = e.target.value; renderAdminPage(); });
-	document.getElementById("adminLoginForm").addEventListener("submit", handleAdminLogin);
-	document.getElementById("logoutButton").addEventListener("click", handleLogout);
+	document.getElementById("logoutButton")?.addEventListener("click", handleLogout);
 
 	const app = document.getElementById("adminApp");
-	app.addEventListener("change", handleAdminInput); app.addEventListener("click", handleAdminClick);
-	renderAdminPage(); setupSettingsMenu();
+	app.addEventListener("change", handleAdminInput);
+	app.addEventListener("click", handleAdminClick);
+	renderAdminPage();
+	setupSettingsMenu();
+}
+
+function handleAdminInput(event) {
+	const target = event.target;
+	if (target.hasAttribute('data-room-edit')) {
+		const idx = Number(target.dataset.periodIndex), key = target.dataset.blockKey;
+		state.schedule.weeks[state.currentWeekIdx][state.currentDay][idx][key].room = target.value;
+		saveSchedule(state.schedule);
+	}
+	if (target.hasAttribute('data-event-field')) {
+		const idx = Number(target.dataset.eventIndex), field = target.dataset.eventField;
+		state.schedule.events[idx][field] = target.value;
+		saveSchedule(state.schedule);
+	}
 }
 
 function handleAdminClick(event) {
@@ -402,12 +440,12 @@ function renderLiveTimer() {
 }
 
 function renderEventFeed(s) {
-	if (!s.events.length) return '<p class="muted-copy">No special events scheduled.</p>';
+	if (!s.events || !s.events.length) return '<p class="muted-copy">No special events scheduled.</p>';
 	return s.events.map(ev => `<article class="event-card"><div class="event-header"><span class="event-chip">${ev.period === 'all' ? 'All day' : 'Period ' + ev.period}</span></div><div class="event-title">${escapeHtml(ev.title)}</div>${ev.note ? `<div class="event-note">${escapeHtml(ev.note)}</div>` : ''}${ev.description ? `<div class="event-description">${escapeHtml(ev.description)}</div>` : ''}</article>`).join('');
 }
 
 function renderEventsEditor(s) {
-	if (!s.events.length) return '<p class="muted-copy">No special events.</p>';
+	if (!s.events || !s.events.length) return '<p class="muted-copy">No special events.</p>';
 	return `<div class="event-editor-horizontal">${s.events.map((ev, i) => {
 		const hasDesc = ev.description && ev.description.length > 0;
 		return `<div class="event-editor-card" data-event-index="${i}"><div class="field"><span>When</span><select data-event-field="period" data-event-index="${i}">${['all', 1, 2, 3, 4].map(v => `<option value="${v}" ${ev.period == v ? 'selected' : ''}>${v == 'all' ? 'All day' : 'Period ' + v}</option>`).join('')}</select></div><div class="field"><span>Title</span><input type="text" data-event-field="title" data-event-index="${i}" value="${escapeAttribute(ev.title)}"></div><div class="field"><span>Note</span><input type="text" data-event-field="note" data-event-index="${i}" value="${escapeAttribute(ev.note)}"></div><div class="desc-container ${hasDesc ? '' : 'hidden'}" data-event-index="${i}"><div class="field"><span>Description</span><textarea data-event-field="description" data-event-index="${i}">${escapeAttribute(ev.description)}</textarea></div></div><div class="event-actions"><button class="ghost-btn small-btn" data-action="toggle-description" data-event-index="${i}">${hasDesc ? 'Hide Desc' : 'Add Desc'}</button><button class="ghost-btn small-btn" data-action="delete-event" data-event-index="${i}">Remove</button></div></div>`;
@@ -416,11 +454,11 @@ function renderEventsEditor(s) {
 
 function ensureScheduleShape(s) {
 	if (!s) return JSON.parse(JSON.stringify(DEFAULT_SCHEDULE));
-	const n = { weeks: s.weeks || [createEmptyWeek(), createEmptyWeek()], events: Array.isArray(s.events) ? s.events : [] };
+	const n = { weeks: s.weeks || [createEmptyWeek()], events: Array.isArray(s.events) ? s.events : [] };
 	if (Array.isArray(s.periods) && !s.weeks) {
 		const week = {};
 		DAYS.forEach(day => { week[day] = s.periods.map(p => ({ period: p.period, x: normalizeBlock(p.x), y: normalizeBlock(p.y) })); });
-		n.weeks = [week, JSON.parse(JSON.stringify(week))];
+		n.weeks = [week];
 	}
 	n.weeks.forEach(week => {
 		DAYS.forEach(day => {
@@ -435,9 +473,9 @@ function ensureScheduleShape(s) {
 }
 
 function normalizeBlock(b) {
-	if (b?.course === "None") return { course: "None", teacher: "", room: "", length: 1, note: "" };
-	const d = COURSE_LIBRARY[b?.course] || COURSE_LIBRARY.Bio;
-	return { course: b?.course || "Bio", teacher: b?.teacher || d.teacher, room: b?.room || d.room, length: Number(b?.length) === 2 ? 2 : 1, note: b?.note || "" };
+	if (!b || b.course === "None") return { course: "None", teacher: "", room: "", length: 1, note: "" };
+	const d = COURSE_LIBRARY[b.course] || COURSE_LIBRARY.Bio;
+	return { course: b.course || "Bio", teacher: b.teacher || d.teacher, room: b.room || d.room, length: Number(b.length) === 2 ? 2 : 1, note: b.note || "" };
 }
 
 function setupSettingsMenu() {
