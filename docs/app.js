@@ -107,9 +107,6 @@ function applyAutoMerge(schedule) {
 					}
 				});
 			}
-			// Period 4 is always base length 1 (can't span to P5)
-			periods[3].x.length = 1;
-			periods[3].y.length = 1;
 		});
 	});
 }
@@ -288,17 +285,25 @@ function setupDragAndDrop() {
 	const dayZones = document.querySelectorAll('.admin-table td.block-col');
 	const weekZones = document.querySelectorAll('.admin-cell');
 
-	cards.forEach(c => c.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', 'lib:' + c.dataset.course)));
+	cards.forEach(c => {
+		c.addEventListener('dragstart', e => {
+			e.dataTransfer.effectAllowed = 'copy';
+			e.dataTransfer.setData('text/plain', 'lib:' + c.dataset.course);
+		});
+	});
 
 	[...tableBlocks, ...weekBlocks].forEach(b => {
 		b.addEventListener('dragstart', e => {
+			e.dataTransfer.effectAllowed = 'move';
 			const info = { day: b.dataset.day || state.currentDay, idx: b.dataset.periodIndex, key: b.dataset.blockKey || b.dataset.block };
 			e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(info));
 		});
 	});
 
 	const handleDrop = (e, zone, d, idx, key) => {
-		e.preventDefault(); zone.classList.remove('drag-over');
+		e.preventDefault();
+		e.stopPropagation();
+		zone.classList.remove('drag-over');
 		const raw = e.dataTransfer.getData('text/plain');
 		if (!raw) return;
 		handleSelection(idx, key, raw, e, zone, d);
@@ -306,7 +311,7 @@ function setupDragAndDrop() {
 
 	dayZones.forEach(z => {
 		const k = z.dataset.block, i = Number(z.dataset.periodIndex);
-		z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
+		z.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; z.classList.add('drag-over'); });
 		z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
 		z.addEventListener('drop', e => handleDrop(e, z, state.currentDay, i, k));
 		z.addEventListener('click', e => {
@@ -316,7 +321,7 @@ function setupDragAndDrop() {
 
 	weekZones.forEach(z => {
 		const d = z.dataset.day, i = Number(z.dataset.periodIndex), k = z.dataset.block;
-		z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
+		z.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; z.classList.add('drag-over'); });
 		z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
 		z.addEventListener('drop', e => handleDrop(e, z, d, i, k));
 		z.addEventListener('click', () => { if (state.selectedCourse) handleSelection(i, k, 'lib:' + state.selectedCourse, null, z, d); });
@@ -355,17 +360,25 @@ function handleSelection(tIdx, key, raw, event, zone, day) {
 
 function handleAdminLogin(event) {
 	event.preventDefault();
-	const user = document.getElementById("adminUsername").value.toLowerCase();
+	const user = document.getElementById("adminUsername").value.toLowerCase().trim();
 	const pass = document.getElementById("adminPassword").value;
 	const error = document.getElementById("loginError");
+
+	if (!user || !pass) {
+		error.textContent = "Please enter both username and password";
+		error.hidden = false;
+		return;
+	}
 
 	if (TEACHERS[user] && TEACHERS[user].password === pass) {
 		localStorage.setItem(AUTH_KEY, 'ok');
 		localStorage.setItem(AUTH_USER_KEY, JSON.stringify(TEACHERS[user]));
+		error.hidden = true;
 		location.reload();
 	} else {
-		error.textContent = "Invalid credentials";
+		error.textContent = "Invalid username or password. Try 'charles' with password 'SMCS'.";
 		error.hidden = false;
+		document.getElementById("adminPassword").value = "";
 	}
 }
 
@@ -431,21 +444,27 @@ function handleAdminClick(event) {
 		const periods = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
 		const block = periods[idx][key];
 
-		if (idx === 3 && Number(block.length) === 1) {
-			alert("Period 4 cannot be a double period start.");
-			return;
-		}
-
-		block.length = Number(block.length) === 1 ? 2 : 1;
-		if (block.length === 1) {
-			block.forceSingle = true;
-		} else {
+		if (Number(block.length) === 1) {
+			// Check if we can create a double period
+			if (idx >= 3) {
+				alert("Cannot create double period - no following period available.");
+				return;
+			}
+			// Toggle to double
+			block.length = 2;
 			delete block.forceSingle;
 			if (periods[idx+1]) {
 				const next = periods[idx+1][key];
-				next.course = block.course; next.teacher = block.teacher; next.room = block.room; next.length = 1;
+				next.course = block.course;
+				next.teacher = block.teacher;
+				next.room = block.room;
+				next.length = 1;
 				delete next.forceSingle;
 			}
+		} else {
+			// Toggle back to single
+			block.length = 1;
+			block.forceSingle = true;
 		}
 		saveSchedule(state.schedule);
 	}
