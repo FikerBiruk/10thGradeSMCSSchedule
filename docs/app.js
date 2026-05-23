@@ -1,4 +1,4 @@
-// Version 5.3 - Fixed Week View Grid, Added Login Logic, and Removed Week 2
+// Version 5.4 - Enhanced Double Period Logic, Fixed Grid Alignment, and Improved Event UI
 
 const firebaseConfig = {
 	apiKey: "AIzaSyBchrPCAav08CfPBKSTmaHvMrEoid2NxEU",
@@ -94,8 +94,12 @@ function applyAutoMerge(schedule) {
 				['x', 'y'].forEach(key => {
 					const b1 = periods[idx][key];
 					const b2 = periods[idx+1][key];
+
+					if (b1.forceSingle) return;
+
 					const prev = idx > 0 ? periods[idx-1] : null;
 					if (prev && Number(prev[key].length) === 2) return;
+
 					if (b1.course && b1.course !== "None" && b1.course === b2.course) {
 						b1.length = 2; b2.teacher = b1.teacher; b2.room = b1.room; b2.length = 1;
 					} else if (Number(b1.length) === 2) {
@@ -103,6 +107,9 @@ function applyAutoMerge(schedule) {
 					}
 				});
 			}
+			// Period 4 is always base length 1 (can't span to P5)
+			periods[3].x.length = 1;
+			periods[3].y.length = 1;
 		});
 	});
 }
@@ -140,16 +147,16 @@ function renderFullWeekView() {
 	const todayDay = daysEnum[new Date().getDay()];
 
 	const renderGroup = (key, label) => {
-		let h = `<div class="week-group-section"><h3 class="week-group-title ${key}">${label}</h3><div class="full-week-grid"><div class="week-corner"></div>`;
+		let h = `<div class="week-group-section"><h3 class="week-group-title ${key}">${label}</h3><div class="full-week-grid"><div class="week-corner" style="grid-column: 1; grid-row: 1;"></div>`;
 
-		DAYS.forEach(day => {
+		DAYS.forEach((day, dayIdx) => {
 			const isToday = day === todayDay;
-			h += `<div class="week-day-header ${isToday ? 'is-today' : ''}">${day}</div>`;
+			h += `<div class="week-day-header ${isToday ? 'is-today' : ''}" style="grid-column: ${dayIdx + 2}; grid-row: 1;">${day}</div>`;
 		});
 
 		for (let pIdx = 0; pIdx < 4; pIdx++) {
-			h += `<div class="week-period-row"><div class="week-period-label">P${pIdx+1}</div>`;
-			DAYS.forEach(day => {
+			h += `<div class="week-period-row"><div class="week-period-label" style="grid-column: 1; grid-row: ${pIdx + 2};">P${pIdx+1}</div>`;
+			DAYS.forEach((day, dayIdx) => {
 				const isToday = day === todayDay;
 				const periods = weekData[day];
 				const block = periods[pIdx][key];
@@ -157,13 +164,11 @@ function renderFullWeekView() {
 				const prev = pIdx > 0 ? periods[pIdx-1] : null;
 				const isCovered = prev && Number(prev[key].length) === 2;
 
-				if (isCovered) {
-					// We don't render anything, but the grid will have a gap if we don't handle it with spans
-					// In a display: contents row, we must ensure the previous cell had grid-row: span 2
-				} else {
+				if (!isCovered) {
 					const isDouble = Number(block.length) === 2;
 					const empty = block.course === "None";
-					h += `<div class="week-cell ${key} ${empty ? 'empty' : 'has-class'} ${isToday ? 'is-today' : ''} ${isDouble ? 'row-span-2' : ''}" style="${isDouble ? 'grid-row: span 2;' : ''}">
+					h += `<div class="week-cell ${key} ${empty ? 'empty' : 'has-class'} ${isToday ? 'is-today' : ''} ${isDouble ? 'row-span-2' : ''}"
+						style="grid-column: ${dayIdx + 2}; grid-row: ${pIdx + 2} / span ${isDouble ? 2 : 1};">
 						${empty ? '' : `<div class="week-course">${escapeHtml(block.course)}</div><div class="week-room">Rm ${escapeHtml(block.room)}</div>`}
 					</div>`;
 				}
@@ -203,8 +208,6 @@ function renderAdminPage() {
 	document.getElementById("adminWeekViewBtn")?.classList.toggle("active", state.adminView === 'week');
 	document.getElementById("adminDaySelect")?.closest('.admin-nav-group')?.classList.toggle('hidden', state.adminView === 'week');
 
-	const wSelect = document.getElementById("adminWeekSelect");
-	if (wSelect) wSelect.value = state.currentWeekIdx;
 	const dSelect = document.getElementById("adminDaySelect");
 	if (dSelect) dSelect.value = state.currentDay;
 
@@ -223,25 +226,33 @@ function renderAdminPage() {
 
 function renderAdminWeekGrid() {
 	const weekData = state.schedule.weeks[state.currentWeekIdx];
-	let h = `<div class="multi-week-container"><div class="week-group-section"><div class="full-week-grid admin-week-grid"><div class="week-corner"></div>`;
-	DAYS.forEach(day => h += `<div class="week-day-header"><div class="week-day-name">${day}</div></div>`);
-	[1, 2, 3, 4].forEach(pNum => {
-		h += `<div class="week-period-row"><div class="week-period-label">P${pNum}</div>`;
-		DAYS.forEach(day => {
-			const bx = weekData[day][pNum-1].x;
-			const by = weekData[day][pNum-1].y;
-			h += `<div class="week-cell admin-cell">
-				<div class="week-sub-cell x ${bx.course==='None'?'empty':'has-class'}" draggable="${bx.course!=='None'}" data-day="${day}" data-period-index="${pNum-1}" data-block="x">
-					<span class="sub-label">X</span>${bx.course==='None'?'':bx.course}
-				</div>
-				<div class="week-sub-cell y ${by.course==='None'?'empty':'has-class'}" draggable="${by.course!=='None'}" data-day="${day}" data-period-index="${pNum-1}" data-block="y">
-					<span class="sub-label">Y</span>${by.course==='None'?'':by.course}
-				</div>
-			</div>`;
-		});
-		h += `</div>`;
-	});
-	return h + `</div></div></div>`;
+	const renderGroup = (key, label) => {
+		let h = `<div class="week-group-section"><h3 class="week-group-title ${key}">${label}</h3><div class="full-week-grid admin-week-grid"><div class="week-corner" style="grid-column: 1; grid-row: 1;"></div>`;
+		DAYS.forEach((day, dayIdx) => h += `<div class="week-day-header" style="grid-column: ${dayIdx + 2}; grid-row: 1;"><div class="week-day-name">${day}</div></div>`);
+		for (let pIdx = 0; pIdx < 4; pIdx++) {
+			h += `<div class="week-period-row"><div class="week-period-label" style="grid-column: 1; grid-row: ${pIdx + 2};">P${pIdx+1}</div>`;
+			DAYS.forEach((day, dayIdx) => {
+				const periods = weekData[day];
+				const block = periods[pIdx][key];
+				const prev = pIdx > 0 ? periods[pIdx-1] : null;
+				const isCovered = prev && Number(prev[key].length) === 2;
+
+				if (!isCovered) {
+					const isDouble = Number(block.length) === 2;
+					const empty = block.course === "None";
+					h += `<div class="week-cell admin-cell ${key} ${empty ? 'empty' : 'has-class'} ${isDouble ? 'row-span-2' : ''}"
+						style="grid-column: ${dayIdx + 2}; grid-row: ${pIdx + 2} / span ${isDouble ? 2 : 1};"
+						draggable="${!empty}" data-day="${day}" data-period-index="${pIdx}" data-block="${key}">
+						<span class="sub-label">${key.toUpperCase()}</span>
+						<div class="week-course">${empty ? 'Empty' : escapeHtml(block.course)}</div>
+					</div>`;
+				}
+			});
+			h += `</div>`;
+		}
+		return h + `</div></div>`;
+	};
+	return `<div class="multi-week-container">${renderGroup('x', 'Block X')}${renderGroup('y', 'Block Y')}</div>`;
 }
 
 function renderAdminBlock(block, key, idx) {
@@ -272,10 +283,10 @@ function renderClassCards() {
 function setupDragAndDrop() {
 	const cards = document.querySelectorAll('.draggable-card');
 	const tableBlocks = document.querySelectorAll('.admin-block-cell[draggable="true"]');
-	const weekBlocks = document.querySelectorAll('.week-sub-cell[draggable="true"]');
+	const weekBlocks = document.querySelectorAll('.admin-cell[draggable="true"]');
 
 	const dayZones = document.querySelectorAll('.admin-table td.block-col');
-	const weekZones = document.querySelectorAll('.week-sub-cell');
+	const weekZones = document.querySelectorAll('.admin-cell');
 
 	cards.forEach(c => c.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', 'lib:' + c.dataset.course)));
 
@@ -327,6 +338,7 @@ function handleSelection(tIdx, key, raw, event, zone, day) {
 		block.course = course;
 		const lib = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
 		block.teacher = lib.teacher; block.room = lib.room; block.length = 1;
+		delete block.forceSingle;
 	} else if (raw.startsWith('table:')) {
 		const src = JSON.parse(raw.replace('table:', ''));
 		if (src.day == day && src.idx == tIdx && src.key == key) return;
@@ -334,7 +346,9 @@ function handleSelection(tIdx, key, raw, event, zone, day) {
 		const tBlock = week[day][tIdx][key];
 		const temp = { ...sBlock };
 		sBlock.course = tBlock.course; sBlock.teacher = tBlock.teacher; sBlock.room = tBlock.room; sBlock.length = 1;
+		delete sBlock.forceSingle;
 		tBlock.course = temp.course; tBlock.teacher = temp.teacher; tBlock.room = temp.room; tBlock.length = 1;
+		delete tBlock.forceSingle;
 	}
 	saveSchedule(state.schedule);
 }
@@ -375,7 +389,6 @@ function initAdminPage() {
 
 	document.getElementById("adminDayViewBtn")?.addEventListener("click", () => { state.adminView = 'day'; renderAdminPage(); });
 	document.getElementById("adminWeekViewBtn")?.addEventListener("click", () => { state.adminView = 'week'; renderAdminPage(); });
-	document.getElementById("adminWeekSelect")?.addEventListener("change", e => { state.currentWeekIdx = Number(e.target.value); renderAdminPage(); });
 	document.getElementById("adminDaySelect")?.addEventListener("change", e => { state.currentDay = e.target.value; renderAdminPage(); });
 	document.getElementById("logoutButton")?.addEventListener("click", handleLogout);
 
@@ -417,10 +430,22 @@ function handleAdminClick(event) {
 		const idx = Number(btn.dataset.periodIndex), key = btn.dataset.blockKey;
 		const periods = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
 		const block = periods[idx][key];
+
+		if (idx === 3 && Number(block.length) === 1) {
+			alert("Period 4 cannot be a double period start.");
+			return;
+		}
+
 		block.length = Number(block.length) === 1 ? 2 : 1;
-		if (Number(block.length) === 2 && periods[idx+1]) {
-			const next = periods[idx+1][key];
-			next.course = block.course; next.teacher = block.teacher; next.room = block.room; next.length = 1;
+		if (block.length === 1) {
+			block.forceSingle = true;
+		} else {
+			delete block.forceSingle;
+			if (periods[idx+1]) {
+				const next = periods[idx+1][key];
+				next.course = block.course; next.teacher = block.teacher; next.room = block.room; next.length = 1;
+				delete next.forceSingle;
+			}
 		}
 		saveSchedule(state.schedule);
 	}
@@ -441,7 +466,20 @@ function renderLiveTimer() {
 
 function renderEventFeed(s) {
 	if (!s.events || !s.events.length) return '<p class="muted-copy">No special events scheduled.</p>';
-	return s.events.map(ev => `<article class="event-card"><div class="event-header"><span class="event-chip">${ev.period === 'all' ? 'All day' : 'Period ' + ev.period}</span></div><div class="event-title">${escapeHtml(ev.title)}</div>${ev.note ? `<div class="event-note">${escapeHtml(ev.note)}</div>` : ''}${ev.description ? `<div class="event-description">${escapeHtml(ev.description)}</div>` : ''}</article>`).join('');
+	return s.events.map(ev => `
+        <article class="event-card">
+            <div class="event-header">
+                <span class="event-chip ${ev.period === 'all' ? 'all-day' : ''}">
+                    ${ev.period === 'all' ? 'All Day' : 'Period ' + ev.period}
+                </span>
+            </div>
+            <div class="event-body">
+                <h3 class="event-title">${escapeHtml(ev.title)}</h3>
+                ${ev.note ? `<p class="event-note">${escapeHtml(ev.note)}</p>` : ''}
+                ${ev.description ? `<p class="event-desc">${escapeHtml(ev.description)}</p>` : ''}
+            </div>
+        </article>
+    `).join('');
 }
 
 function renderEventsEditor(s) {
@@ -475,7 +513,7 @@ function ensureScheduleShape(s) {
 function normalizeBlock(b) {
 	if (!b || b.course === "None") return { course: "None", teacher: "", room: "", length: 1, note: "" };
 	const d = COURSE_LIBRARY[b.course] || COURSE_LIBRARY.Bio;
-	return { course: b.course || "Bio", teacher: b.teacher || d.teacher, room: b.room || d.room, length: Number(b.length) === 2 ? 2 : 1, note: b.note || "" };
+	return { course: b.course || "Bio", teacher: b.teacher || d.teacher, room: b.room || d.room, length: Number(b.length) === 2 ? 2 : 1, note: b.note || "", forceSingle: b.forceSingle || false };
 }
 
 function setupSettingsMenu() {
@@ -503,7 +541,7 @@ function loadDarkModePreference() {
 
 function updateSaveStatus() {
 	const s = document.getElementById('saveStatus');
-	if (s) s.textContent = 'Synced with Cloud';
+	if (s) s.textContent = 'Synced';
 }
 
 function isAuthenticated() { return localStorage.getItem(AUTH_KEY) === 'ok'; }

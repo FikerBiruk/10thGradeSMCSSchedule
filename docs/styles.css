@@ -20,6 +20,9 @@
 	--radius-xl: 28px;
 	--radius-lg: 22px;
 	--radius-md: 16px;
+	--z-ui: 100;
+	--z-sidebar: 200;
+	--z-menu: 1000;
 }
 
 body.light-mode {
@@ -58,7 +61,7 @@ a { color: inherit; text-decoration: none; }
 
 .site-shell {
 	width: min(1400px, 100%); margin: 0 auto;
-	display: grid; gap: 20px; position: relative; z-index: 1;
+	display: grid; gap: 20px; position: relative;
 }
 
 .surface {
@@ -70,11 +73,7 @@ a { color: inherit; text-decoration: none; }
 	border-radius: var(--radius-xl); padding: 32px;
 	display: flex; align-items: flex-end; justify-content: space-between;
 	gap: 24px; margin-bottom: 12px;
-}
-
-.eyebrow {
-	display: inline-block; margin-bottom: 10px; text-transform: uppercase;
-	letter-spacing: 0.18em; font-size: 0.72rem; font-weight: 800; color: var(--accent);
+	position: relative; z-index: var(--z-ui);
 }
 
 .hero h1 { font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.1; margin-bottom: 8px; }
@@ -86,26 +85,29 @@ a { color: inherit; text-decoration: none; }
 
 .main-panel, .editor-panel {
 	min-width: 0; border-radius: var(--radius-xl); padding: 32px;
+	position: relative; z-index: 10;
 }
 
 .sidebar-stack {
 	display: grid; gap: 20px; position: sticky; top: 24px;
+	z-index: var(--z-sidebar);
 }
 
 .info-card, .toolbar-panel, .auth-card {
 	border-radius: var(--radius-xl); padding: 28px;
 }
 
-/* Auth Card Fixes */
+/* Auth Card */
 .auth-card { max-width: 440px; margin: 80px auto; }
 .auth-form { display: grid; gap: 20px; margin-top: 24px; }
 .field { display: grid; gap: 8px; font-weight: 700; color: var(--muted); font-size: 0.85rem; text-transform: uppercase; }
-.field input, .field select {
+.field input, .field select, .field textarea {
 	padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--line);
 	background: var(--bg-2); color: var(--text); outline: none; transition: border-color 0.2s;
 }
 .field input:focus { border-color: var(--accent); }
 
+/* Buttons */
 .primary-btn {
 	background: var(--accent); color: #000; border: none; padding: 14px;
 	border-radius: var(--radius-md); font-weight: 800; cursor: pointer;
@@ -113,7 +115,7 @@ a { color: inherit; text-decoration: none; }
 }
 .primary-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
 
-/* Table Styling - Fixing the "weird lines" */
+/* Schedule Table */
 .schedule-table {
 	width: 100%; border-collapse: separate; border-spacing: 0;
 	border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden;
@@ -134,96 +136,112 @@ a { color: inherit; text-decoration: none; }
 .period-col { width: 100px; font-weight: 800; background: var(--surface-2); text-align: center !important; }
 .period-label { font-size: 1.3rem; color: var(--accent); }
 
-.table-block { display: flex; flex-direction: column; gap: 4px; }
-.course-name { font-size: 1.5rem; font-weight: 800; color: var(--text); line-height: 1.2; }
-.teacher-name { font-size: 1rem; color: var(--muted); font-weight: 600; }
-.room-number { font-size: 0.85rem; color: var(--accent); font-weight: 800; text-transform: uppercase; }
-
-.block-x { border-left: 6px solid var(--x); }
-.block-y { border-left: 6px solid var(--y); }
-
-/* Week View Grid Fixes */
+/* Week View Alignment Fix */
 .full-week-grid {
-	width: 100%; display: grid; grid-template-columns: 80px repeat(5, 1fr);
+	width: 100%; display: grid;
+	grid-template-columns: 80px repeat(5, 1fr);
+	grid-template-rows: 50px repeat(4, minmax(90px, auto));
 	gap: 12px; padding: 24px; background: var(--surface-2);
 	border-radius: var(--radius-lg); border: 1px solid var(--line);
 }
 
-.week-corner { background: transparent; }
+.week-corner { border-bottom: 1px solid var(--line); }
+
 .week-day-header {
-	text-align: center; padding: 12px; font-weight: 800; color: var(--muted);
-	text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.85rem;
-	border-bottom: 1px solid var(--line);
+	display: flex; align-items: center; justify-content: center;
+	font-weight: 800; color: var(--muted); text-transform: uppercase;
+	letter-spacing: 0.1em; font-size: 0.85rem; border-bottom: 1px solid var(--line);
 }
 .week-day-header.is-today { color: var(--accent); border-bottom-color: var(--accent); }
 
 .week-period-label {
 	display: flex; align-items: center; justify-content: center;
-	font-weight: 800; color: var(--accent); font-size: 1rem;
+	font-weight: 800; color: var(--accent); font-size: 1.1rem;
+	border-right: 1px solid var(--line);
 }
 
 .week-cell {
 	background: var(--surface); border: 1px solid var(--line);
-	border-radius: 16px; padding: 16px; min-height: 90px;
-	display: flex; flex-direction: column; justify-content: center; align-items: center;
-	transition: all 0.2s ease;
+	border-radius: 16px; padding: 12px; display: flex; flex-direction: column;
+	justify-content: center; align-items: center; text-align: center;
+	transition: all 0.2s ease; position: relative;
 }
 .week-cell.has-class:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
 .week-cell.is-today { border-color: var(--accent); background: rgba(82, 214, 197, 0.05); }
-.week-cell.empty { opacity: 0.3; border-style: dashed; }
+.week-cell.empty { opacity: 0.4; border-style: dashed; }
 
-.week-course { font-size: 1.2rem; font-weight: 800; }
+.week-course { font-size: 1.1rem; font-weight: 800; line-height: 1.2; }
 .week-room { font-size: 0.75rem; font-weight: 700; color: var(--muted); margin-top: 4px; }
 
-/* Admin Grid Specifics */
-.admin-week-grid .week-cell { padding: 8px; gap: 8px; min-height: 110px; }
+/* Admin Grid */
+.admin-week-grid .week-cell { padding: 8px; gap: 6px; }
 .week-sub-cell {
-	width: 100%; padding: 8px; border-radius: 10px; font-size: 0.75rem;
+	width: 100%; padding: 6px 10px; border-radius: 10px; font-size: 0.7rem;
 	font-weight: 800; border: 1px solid var(--line); display: flex;
-	justify-content: space-between; align-items: center;
+	justify-content: space-between; align-items: center; background: var(--surface-2);
 }
-.week-sub-cell.x { border-left: 4px solid var(--x); }
-.week-sub-cell.y { border-left: 4px solid var(--y); }
-.sub-label { opacity: 0.5; font-size: 0.65rem; }
+.week-sub-cell.x { border-left: 3px solid var(--x); }
+.week-sub-cell.y { border-left: 3px solid var(--y); }
+.sub-label { opacity: 0.4; font-size: 0.6rem; }
 
-/* Settings Menu */
-.settings-menu {
-	position: absolute; top: 100%; right: 0; margin-top: 8px;
+/* Drag and Drop Visuals */
+.drag-over { background: rgba(82, 214, 197, 0.15) !important; outline: 2px dashed var(--accent); z-index: 50; }
+.draggable-card, .admin-block-cell, .admin-cell { cursor: grab; }
+.draggable-card:active, .admin-block-cell:active, .admin-cell:active { cursor: grabbing; }
+
+/* Special Events UI */
+.event-feed { display: grid; gap: 16px; }
+.event-card {
 	background: var(--surface-2); border: 1px solid var(--line);
-	border-radius: var(--radius-md); box-shadow: var(--shadow);
-	z-index: 1000; min-width: 180px; overflow: hidden;
+	border-radius: 20px; overflow: hidden; display: flex; flex-direction: column;
+	transition: transform 0.2s;
+}
+.event-card:hover { transform: scale(1.02); }
+.event-header { padding: 12px 20px; background: rgba(255, 255, 255, 0.03); border-bottom: 1px solid var(--line); }
+.event-chip {
+	display: inline-block; padding: 4px 12px; border-radius: 100px;
+	font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
+	background: var(--accent-2); color: #fff;
+}
+.event-chip.all-day { background: var(--accent); color: #000; }
+.event-body { padding: 20px; }
+.event-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 6px; }
+.event-note { font-size: 0.9rem; color: var(--muted); font-weight: 600; margin-bottom: 10px; }
+.event-desc { font-size: 0.85rem; color: var(--muted-2); line-height: 1.5; }
+
+/* Settings Menu - Fix z-index and positioning */
+.sidebar-actions { position: relative; }
+.settings-menu {
+	position: absolute; top: calc(100% + 10px); right: 0;
+	background: var(--bg-2); border: 1px solid var(--line);
+	border-radius: var(--radius-md); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+	z-index: var(--z-menu); min-width: 200px; overflow: hidden;
 }
 .settings-item {
-	display: block; width: 100%; padding: 12px 20px; border: none;
+	display: block; width: 100%; padding: 14px 20px; border: none;
 	background: transparent; color: var(--text); text-align: left;
-	cursor: pointer; font-weight: 600;
+	cursor: pointer; font-weight: 700; font-size: 0.9rem;
 }
-.settings-item:hover { background: var(--surface); }
+.settings-item:hover { background: var(--surface); color: var(--accent); }
 
-/* Toggles */
-.view-toggle, .week-selector {
+/* Toggles & Nav */
+.view-toggle {
 	display: flex; background: var(--surface-2); padding: 4px;
-	border-radius: 12px; border: 1px solid var(--line); gap: 4px;
+	border-radius: 14px; border: 1px solid var(--line); gap: 4px;
 }
 .toggle-btn {
 	flex: 1; background: transparent; border: none; padding: 10px;
-	border-radius: 8px; color: var(--muted); font-weight: 800;
+	border-radius: 10px; color: var(--muted); font-weight: 800;
 	font-size: 0.8rem; cursor: pointer; transition: 0.2s;
 }
 .toggle-btn.active { background: var(--accent); color: #000; }
 
-.secondary-btn, .ghost-btn {
+.secondary-btn {
 	background: var(--surface-2); border: 1px solid var(--line);
 	padding: 10px 20px; border-radius: 12px; color: var(--text);
-	font-weight: 700; cursor: pointer;
+	font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px;
 }
-.ghost-btn { background: transparent; border-color: transparent; opacity: 0.7; }
-.ghost-btn:hover { opacity: 1; }
-
-.danger-btn {
-	background: var(--danger); color: #000; border: none;
-	padding: 10px 20px; border-radius: 12px; font-weight: 800; cursor: pointer;
-}
+.secondary-btn:hover { background: var(--surface); }
 
 @media (max-width: 1100px) {
 	.public-grid, .admin-grid-2 { grid-template-columns: 1fr; }
@@ -232,8 +250,8 @@ a { color: inherit; text-decoration: none; }
 
 @media (max-width: 768px) {
 	body { padding: 12px; }
-	.hero { flex-direction: column; align-items: flex-start; padding: 24px; }
+	.hero { flex-direction: column; align-items: flex-start; padding: 24px; gap: 16px; }
 	.full-week-grid { grid-template-columns: 50px repeat(5, 1fr); padding: 12px; gap: 8px; }
 	.week-cell { padding: 8px; min-height: 70px; }
-	.week-course { font-size: 0.9rem; }
+	.week-course { font-size: 0.8rem; }
 }
