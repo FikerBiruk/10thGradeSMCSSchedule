@@ -42,6 +42,26 @@ body.light-mode {
 	--grad-bg-2: #f3f4f6;
 }
 
+body.red-mode {
+	color-scheme: dark;
+	--bg: #120b10;
+	--panel: rgba(31, 20, 27, 0.88);
+	--panel-hover: rgba(42, 28, 35, 0.94);
+	--line: rgba(255, 215, 225, 0.10);
+	--text: #f7edf0;
+	--muted: #d1b7bf;
+	--muted-2: #ad8895;
+	--accent: #cf7183;
+	--accent-strong: #a94f63;
+	--danger: #ee8695;
+	--warning: #e0aa71;
+	--shadow: 0 14px 38px rgba(0, 0, 0, 0.22);
+	--grad-1: 207, 113, 131;
+	--grad-2: 155, 122, 208;
+	--grad-bg-1: #120b10;
+	--grad-bg-2: #1c1117;
+}
+
 * {
 	box-sizing: border-box;
 	-webkit-font-smoothing: antialiased;

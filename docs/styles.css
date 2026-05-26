@@ -46,6 +46,27 @@ body.light-mode {
 	--grad-2: 67, 56, 202;
 }
 
+body.red-mode {
+	color-scheme: dark;
+	--bg: #120b10;
+	--bg-2: #1c1117;
+	--surface: rgba(31, 20, 27, 0.88);
+	--surface-2: rgba(42, 28, 35, 0.94);
+	--line: rgba(255, 215, 225, 0.10);
+	--text: #f7edf0;
+	--muted: #d1b7bf;
+	--muted-2: #ad8895;
+	--accent: #cf7183;
+	--accent-2: #9b7ad0;
+	--warning: #e0aa71;
+	--danger: #ee8695;
+	--x: #d78693;
+	--y: #b38bd4;
+	--shadow: 0 14px 38px rgba(0, 0, 0, 0.22);
+	--grad-1: 207, 113, 131;
+	--grad-2: 155, 122, 208;
+}
+
 * { box-sizing: border-box; }
 [hidden], .hidden { display: none !important; }
 
@@ -633,7 +654,7 @@ a { color: inherit; text-decoration: none; }
 
 /* Live Status */
 .live-status-card {
-	background: rgba(82, 214, 197, 0.1);
+	background: rgba(var(--grad-1), 0.1);
 	border: 1px solid var(--accent);
 	border-radius: 12px;
 	padding: 12px 16px;
@@ -651,12 +672,12 @@ a { color: inherit; text-decoration: none; }
 }
 
 .live-status-card.active {
-	background: rgba(82, 214, 197, 0.15);
+	background: rgba(var(--grad-1), 0.15);
 	color: var(--accent);
 }
 
 .live-status-card.break {
-	background: rgba(126, 169, 255, 0.1);
+	background: rgba(var(--grad-2), 0.1);
 	border-color: var(--accent-2);
 	color: var(--accent-2);
 }

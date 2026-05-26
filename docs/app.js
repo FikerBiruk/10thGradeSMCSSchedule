@@ -519,22 +519,31 @@ function setupSettingsMenu() {
 	const menu = document.getElementById('settingsMenu');
 	if (!btn || !menu) return;
 	btn.addEventListener('click', e => { e.stopPropagation(); menu.classList.toggle('hidden'); });
-	document.getElementById('darkModeToggle')?.addEventListener('click', () => setDarkMode(true));
-	document.getElementById('lightModeToggle')?.addEventListener('click', () => setDarkMode(false));
+	document.getElementById('darkModeToggle')?.addEventListener('click', () => setTheme('dark'));
+	document.getElementById('lightModeToggle')?.addEventListener('click', () => setTheme('light'));
+	document.getElementById('redModeToggle')?.addEventListener('click', () => setTheme('red'));
 	document.addEventListener('click', e => { if (!menu.contains(e.target) && !btn.contains(e.target)) menu.classList.add('hidden'); });
 }
 
-function setDarkMode(isDark) {
-	localStorage.setItem('smcs-schedule-dark-mode', isDark);
-	document.body.classList.toggle('dark-mode', isDark);
-	document.body.classList.toggle('light-mode', !isDark);
-	document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+function setTheme(theme) {
+	localStorage.setItem('smcs-schedule-theme', theme);
+	localStorage.removeItem('smcs-schedule-dark-mode');
+	document.body.classList.toggle('dark-mode', theme === 'dark');
+	document.body.classList.toggle('light-mode', theme === 'light');
+	document.body.classList.toggle('red-mode', theme === 'red');
+	document.documentElement.style.colorScheme = theme === 'light' ? 'light' : 'dark';
 	document.getElementById('settingsMenu')?.classList.add('hidden');
 }
 
 function loadDarkModePreference() {
-	const s = localStorage.getItem('smcs-schedule-dark-mode');
-	setDarkMode(s === null ? true : s === 'true');
+	const savedTheme = localStorage.getItem('smcs-schedule-theme');
+	if (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'red') {
+		setTheme(savedTheme);
+		return;
+	}
+
+	const legacy = localStorage.getItem('smcs-schedule-dark-mode');
+	setTheme(legacy === null ? 'dark' : legacy === 'true' ? 'dark' : 'light');
 }
 
 function updateSaveStatus() {
