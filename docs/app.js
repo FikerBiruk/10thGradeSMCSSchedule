@@ -1,4 +1,4 @@
-// Version 5.4 - Enhanced Double Period Logic, Fixed Grid Alignment, and Improved Event UI
+// Version 5.7 - Guaranteed Grid Alignment and Final Layering Fixes
 
 const firebaseConfig = {
 	apiKey: "AIzaSyBchrPCAav08CfPBKSTmaHvMrEoid2NxEU",
@@ -107,6 +107,8 @@ function applyAutoMerge(schedule) {
 					}
 				});
 			}
+			periods[3].x.length = 1;
+			periods[3].y.length = 1;
 		});
 	});
 }
@@ -146,14 +148,14 @@ function renderFullWeekView() {
 	const renderGroup = (key, label) => {
 		let h = `<div class="week-group-section"><h3 class="week-group-title ${key}">${label}</h3><div class="full-week-grid"><div class="week-corner" style="grid-column: 1; grid-row: 1;"></div>`;
 
-		DAYS.forEach((day, dayIdx) => {
+		DAYS.forEach((day, dIdx) => {
 			const isToday = day === todayDay;
-			h += `<div class="week-day-header ${isToday ? 'is-today' : ''}" style="grid-column: ${dayIdx + 2}; grid-row: 1;">${day}</div>`;
+			h += `<div class="week-day-header ${isToday ? 'is-today' : ''}" style="grid-column: ${dIdx + 2}; grid-row: 1;">${day}</div>`;
 		});
 
 		for (let pIdx = 0; pIdx < 4; pIdx++) {
 			h += `<div class="week-period-row"><div class="week-period-label" style="grid-column: 1; grid-row: ${pIdx + 2};">P${pIdx+1}</div>`;
-			DAYS.forEach((day, dayIdx) => {
+			DAYS.forEach((day, dIdx) => {
 				const isToday = day === todayDay;
 				const periods = weekData[day];
 				const block = periods[pIdx][key];
@@ -165,7 +167,7 @@ function renderFullWeekView() {
 					const isDouble = Number(block.length) === 2;
 					const empty = block.course === "None";
 					h += `<div class="week-cell ${key} ${empty ? 'empty' : 'has-class'} ${isToday ? 'is-today' : ''} ${isDouble ? 'row-span-2' : ''}"
-						style="grid-column: ${dayIdx + 2}; grid-row: ${pIdx + 2} / span ${isDouble ? 2 : 1};">
+						style="grid-column: ${dIdx + 2}; grid-row: ${pIdx + 2} / span ${isDouble ? 2 : 1};">
 						${empty ? '' : `<div class="week-course">${escapeHtml(block.course)}</div><div class="week-room">Rm ${escapeHtml(block.room)}</div>`}
 					</div>`;
 				}
@@ -225,10 +227,10 @@ function renderAdminWeekGrid() {
 	const weekData = state.schedule.weeks[state.currentWeekIdx];
 	const renderGroup = (key, label) => {
 		let h = `<div class="week-group-section"><h3 class="week-group-title ${key}">${label}</h3><div class="full-week-grid admin-week-grid"><div class="week-corner" style="grid-column: 1; grid-row: 1;"></div>`;
-		DAYS.forEach((day, dayIdx) => h += `<div class="week-day-header" style="grid-column: ${dayIdx + 2}; grid-row: 1;"><div class="week-day-name">${day}</div></div>`);
+		DAYS.forEach((day, dIdx) => h += `<div class="week-day-header" style="grid-column: ${dIdx + 2}; grid-row: 1;"><div class="week-day-name">${day}</div></div>`);
 		for (let pIdx = 0; pIdx < 4; pIdx++) {
 			h += `<div class="week-period-row"><div class="week-period-label" style="grid-column: 1; grid-row: ${pIdx + 2};">P${pIdx+1}</div>`;
-			DAYS.forEach((day, dayIdx) => {
+			DAYS.forEach((day, dIdx) => {
 				const periods = weekData[day];
 				const block = periods[pIdx][key];
 				const prev = pIdx > 0 ? periods[pIdx-1] : null;
@@ -238,7 +240,7 @@ function renderAdminWeekGrid() {
 					const isDouble = Number(block.length) === 2;
 					const empty = block.course === "None";
 					h += `<div class="week-cell admin-cell ${key} ${empty ? 'empty' : 'has-class'} ${isDouble ? 'row-span-2' : ''}"
-						style="grid-column: ${dayIdx + 2}; grid-row: ${pIdx + 2} / span ${isDouble ? 2 : 1};"
+						style="grid-column: ${dIdx + 2}; grid-row: ${pIdx + 2} / span ${isDouble ? 2 : 1};"
 						draggable="${!empty}" data-day="${day}" data-period-index="${pIdx}" data-block="${key}">
 						<span class="sub-label">${key.toUpperCase()}</span>
 						<div class="week-course">${empty ? 'Empty' : escapeHtml(block.course)}</div>
@@ -285,25 +287,17 @@ function setupDragAndDrop() {
 	const dayZones = document.querySelectorAll('.admin-table td.block-col');
 	const weekZones = document.querySelectorAll('.admin-cell');
 
-	cards.forEach(c => {
-		c.addEventListener('dragstart', e => {
-			e.dataTransfer.effectAllowed = 'copy';
-			e.dataTransfer.setData('text/plain', 'lib:' + c.dataset.course);
-		});
-	});
+	cards.forEach(c => c.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', 'lib:' + c.dataset.course)));
 
 	[...tableBlocks, ...weekBlocks].forEach(b => {
 		b.addEventListener('dragstart', e => {
-			e.dataTransfer.effectAllowed = 'move';
 			const info = { day: b.dataset.day || state.currentDay, idx: b.dataset.periodIndex, key: b.dataset.blockKey || b.dataset.block };
 			e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(info));
 		});
 	});
 
 	const handleDrop = (e, zone, d, idx, key) => {
-		e.preventDefault();
-		e.stopPropagation();
-		zone.classList.remove('drag-over');
+		e.preventDefault(); zone.classList.remove('drag-over');
 		const raw = e.dataTransfer.getData('text/plain');
 		if (!raw) return;
 		handleSelection(idx, key, raw, e, zone, d);
@@ -311,7 +305,7 @@ function setupDragAndDrop() {
 
 	dayZones.forEach(z => {
 		const k = z.dataset.block, i = Number(z.dataset.periodIndex);
-		z.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; z.classList.add('drag-over'); });
+		z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
 		z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
 		z.addEventListener('drop', e => handleDrop(e, z, state.currentDay, i, k));
 		z.addEventListener('click', e => {
@@ -321,7 +315,7 @@ function setupDragAndDrop() {
 
 	weekZones.forEach(z => {
 		const d = z.dataset.day, i = Number(z.dataset.periodIndex), k = z.dataset.block;
-		z.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; z.classList.add('drag-over'); });
+		z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
 		z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
 		z.addEventListener('drop', e => handleDrop(e, z, d, i, k));
 		z.addEventListener('click', () => { if (state.selectedCourse) handleSelection(i, k, 'lib:' + state.selectedCourse, null, z, d); });
@@ -364,21 +358,13 @@ function handleAdminLogin(event) {
 	const pass = document.getElementById("adminPassword").value;
 	const error = document.getElementById("loginError");
 
-	if (!user || !pass) {
-		error.textContent = "Please enter both username and password";
-		error.hidden = false;
-		return;
-	}
-
 	if (TEACHERS[user] && TEACHERS[user].password === pass) {
 		localStorage.setItem(AUTH_KEY, 'ok');
 		localStorage.setItem(AUTH_USER_KEY, JSON.stringify(TEACHERS[user]));
-		error.hidden = true;
 		location.reload();
 	} else {
-		error.textContent = "Invalid username or password. Try 'charles' with password 'SMCS'.";
+		error.textContent = "Invalid credentials";
 		error.hidden = false;
-		document.getElementById("adminPassword").value = "";
 	}
 }
 
@@ -428,7 +414,6 @@ function handleAdminInput(event) {
 
 function handleAdminClick(event) {
 	const target = event.target;
-	if (target.closest("#resetButton")) resetSampleSchedule();
 	if (target.closest("#clearAllButton")) clearAllClasses();
 	if (target.closest("#exportButton")) exportSchedule();
 	if (target.closest("#addEventButton")) addEventRow();
@@ -444,27 +429,21 @@ function handleAdminClick(event) {
 		const periods = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
 		const block = periods[idx][key];
 
-		if (Number(block.length) === 1) {
-			// Check if we can create a double period
-			if (idx >= 3) {
-				alert("Cannot create double period - no following period available.");
-				return;
-			}
-			// Toggle to double
-			block.length = 2;
+		if (idx >= 3 && Number(block.length) === 1) {
+			alert("Period 4 cannot be a double period start.");
+			return;
+		}
+
+		block.length = Number(block.length) === 1 ? 2 : 1;
+		if (block.length === 1) {
+			block.forceSingle = true;
+		} else {
 			delete block.forceSingle;
 			if (periods[idx+1]) {
 				const next = periods[idx+1][key];
-				next.course = block.course;
-				next.teacher = block.teacher;
-				next.room = block.room;
-				next.length = 1;
+				next.course = block.course; next.teacher = block.teacher; next.room = block.room; next.length = 1;
 				delete next.forceSingle;
 			}
-		} else {
-			// Toggle back to single
-			block.length = 1;
-			block.forceSingle = true;
 		}
 		saveSchedule(state.schedule);
 	}
@@ -568,9 +547,8 @@ function getLoggedInUser() {
 	const data = localStorage.getItem(AUTH_USER_KEY);
 	return data ? JSON.parse(data) : null;
 }
-function resetSampleSchedule() { if (confirm('Reset?')) saveSchedule(JSON.parse(JSON.stringify(DEFAULT_SCHEDULE))); }
 function clearAllClasses() {
-	if (confirm('Clear?')) {
+	if (confirm('Clear all classes for today?')) {
 		const s = state.schedule;
 		s.weeks[state.currentWeekIdx][state.currentDay].forEach(p => { p.x = { ...EMPTY_BLOCK }; p.y = { ...EMPTY_BLOCK }; });
 		saveSchedule(s);

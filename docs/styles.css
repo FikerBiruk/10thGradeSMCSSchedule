@@ -22,7 +22,7 @@
 	--radius-md: 16px;
 	--z-ui: 100;
 	--z-sidebar: 200;
-	--z-menu: 1000;
+	--z-menu: 10000;
 }
 
 body.light-mode {
@@ -69,13 +69,15 @@ a { color: inherit; text-decoration: none; }
 .surface {
 	background: var(--surface);
 	border: 1px solid var(--line); box-shadow: var(--shadow); backdrop-filter: blur(18px);
+	/* Critical fix: dropdowns must not be clipped */
+	overflow: visible !important;
 }
 
 .hero {
 	border-radius: var(--radius-xl); padding: 32px;
 	display: flex; align-items: flex-end; justify-content: space-between;
 	gap: 24px; margin-bottom: 12px;
-	position: relative; z-index: var(--z-ui);
+	position: relative; z-index: 1000; /* Ensure hero-actions menu is on top */
 }
 
 .hero h1 { font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.1; margin-bottom: 8px; }
@@ -92,11 +94,18 @@ a { color: inherit; text-decoration: none; }
 
 .sidebar-stack {
 	display: grid; gap: 20px; position: sticky; top: 24px;
-	z-index: var(--z-sidebar);
+	z-index: 2000;
 }
+
+/* Fix stacking for sidebar cards so first card is always above second card */
+.sidebar-stack > section:nth-child(1) { z-index: 100; position: relative; }
+.sidebar-stack > section:nth-child(2) { z-index: 90; position: relative; }
+.sidebar-stack > section:nth-child(3) { z-index: 80; position: relative; }
 
 .info-card, .toolbar-panel, .auth-card {
 	border-radius: var(--radius-xl); padding: 28px;
+	position: relative;
+	overflow: visible !important;
 }
 
 /* Auth Card */
@@ -188,11 +197,11 @@ a { color: inherit; text-decoration: none; }
 
 /* Drag and Drop Visuals */
 .drag-over { background: rgba(82, 214, 197, 0.15) !important; outline: 2px dashed var(--accent); z-index: 50; }
-.draggable-card { cursor: grab; z-index: var(--z-ui); transition: transform 0.15s; }
+.draggable-card { cursor: grab; z-index: 100; transition: transform 0.15s; }
 .draggable-card:active { cursor: grabbing; }
-.admin-block-cell { cursor: grab; z-index: var(--z-ui); position: relative; }
+.admin-block-cell { cursor: grab; z-index: 100; position: relative; }
 .admin-block-cell:active { cursor: grabbing; }
-.admin-cell { cursor: grab; z-index: var(--z-ui); }
+.admin-cell { cursor: grab; z-index: 100; }
 .admin-cell:active { cursor: grabbing; }
 
 /* Special Events UI */
@@ -219,27 +228,39 @@ a { color: inherit; text-decoration: none; }
 .event-note { font-size: 0.9rem; color: var(--muted); font-weight: 600; margin-bottom: 12px; }
 .event-desc { font-size: 0.85rem; color: var(--muted-2); line-height: 1.6; }
 
-/* Settings Menu - Fix z-index and positioning */
-.sidebar-actions { position: relative; z-index: var(--z-sidebar); }
+/* Settings Menu - Absolute Position with Massive Z-Index */
+.sidebar-actions, .hero-actions {
+	position: relative;
+	z-index: 5000;
+}
+
 .settings-menu {
-	position: fixed; top: auto; right: 24px;
-	background: var(--surface-2); border: 1px solid var(--line);
-	border-radius: var(--radius-md); box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-	z-index: 10000; min-width: 220px; overflow: hidden;
-	transform: translateY(calc(100% + 12px));
-	transform-origin: top right;
+	position: absolute;
+	top: calc(100% + 10px);
+	right: 0;
+	background: var(--surface-2);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-md);
+	box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+	z-index: 9999999; /* Absolute top */
+	min-width: 220px;
+	overflow: hidden;
+	animation: popIn 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+	backdrop-filter: blur(25px);
 }
 .settings-menu.hidden { display: none; }
+
 .settings-item {
-	display: block; width: 100%; padding: 16px 20px; border: none;
+	display: block; width: 100%; padding: 16px 24px; border: none;
 	background: transparent; color: var(--text); text-align: left;
-	cursor: pointer; font-weight: 700; font-size: 0.9rem;
+	cursor: pointer; font-weight: 700; font-size: 0.95rem;
 	transition: background 0.15s, color 0.15s;
 }
-.settings-item:hover { background: var(--surface); color: var(--accent); }
+.settings-item:hover { background: rgba(255, 255, 255, 0.1); color: var(--accent); }
 .settings-divider {
 	height: 1px; background: var(--line); border: none; margin: 8px 0;
 }
+.settings-link { color: var(--accent) !important; }
 
 /* Toggles & Nav */
 .view-toggle {
@@ -263,7 +284,6 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 1100px) {
 	.public-grid, .admin-grid-2 { grid-template-columns: 1fr; }
 	.sidebar-stack { order: 2; position: static; }
-	.settings-menu { position: absolute; right: 0; top: calc(100% + 8px); transform: none; }
 }
 
 @media (max-width: 768px) {
@@ -278,7 +298,6 @@ a { color: inherit; text-decoration: none; }
 	.schedule-table th, .schedule-table td { padding: 12px; }
 	.period-col { width: 60px; }
 	.sidebar-actions { flex-direction: column; width: 100%; }
-	.settings-menu { position: absolute; right: 0; top: calc(100% + 8px); min-width: 180px; }
 	.view-toggle { width: 100%; }
 	.toggle-btn { font-size: 0.75rem; }
 }
@@ -403,8 +422,7 @@ a { color: inherit; text-decoration: none; }
 
 .table-block {
 	display: flex;
-	flex-direction: column;
-	gap: 6px;
+	flex-direction: column; gap: 6px;
 }
 
 /* Button Styles */
@@ -580,7 +598,7 @@ a { color: inherit; text-decoration: none; }
 	align-items: center;
 	flex-wrap: wrap;
 	position: relative;
-	z-index: var(--z-ui);
+	z-index: 5000;
 }
 
 /* Toolbar Panel */
