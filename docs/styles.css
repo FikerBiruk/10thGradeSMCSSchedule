@@ -153,24 +153,69 @@ a { color: inherit; text-decoration: none; }
 
 /* Schedule Table */
 .schedule-table {
-	width: 100%; border-collapse: separate; border-spacing: 0;
-	border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden;
-	background: var(--surface);
+	width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-lg);
+	overflow: hidden;
+	background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+	box-shadow: var(--shadow);
+	table-layout: fixed;
 }
 .schedule-table th {
-	background: var(--surface-2); padding: 18px 20px; text-align: left;
-	font-size: 0.75rem; color: var(--muted); text-transform: uppercase;
-	letter-spacing: 0.1em; font-weight: 800; border-bottom: 1px solid var(--line);
+	background: var(--surface-2);
+	padding: 18px 20px;
+	text-align: left;
+	font-size: 0.75rem;
+	color: var(--muted);
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	font-weight: 800;
+	border-bottom: 1px solid var(--line);
 }
 .schedule-table td {
-	padding: 20px; border-bottom: 1px solid var(--line); vertical-align: top;
+	padding: 18px;
+	border-bottom: 1px solid var(--line);
+	vertical-align: top;
 	border-right: 1px solid var(--line);
+	background: transparent;
 }
 .schedule-table td:last-child { border-right: none; }
 .schedule-table tr:last-child td { border-bottom: none; }
+.schedule-table tbody tr:hover td { background: rgba(var(--grad-1), 0.04); }
 
-.period-col { width: 100px; font-weight: 800; background: var(--surface-2); text-align: center !important; }
-.period-label { font-size: 1.3rem; color: var(--accent); }
+.schedule-table tbody tr:hover .period-col { background: var(--surface-2); }
+
+.period-col {
+	width: 108px;
+	font-weight: 800;
+	background: var(--surface-2);
+	text-align: center !important;
+	position: relative;
+	box-shadow: inset -1px 0 0 var(--line);
+}
+.period-col::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	bottom: 12px;
+	transform: translateX(-50%);
+	width: 38px;
+	height: 3px;
+	border-radius: 99px;
+	background: linear-gradient(90deg, var(--accent), var(--accent-2));
+	opacity: 0.55;
+}
+.period-label { font-size: 1.3rem; color: var(--accent); display: inline-block; }
+
+.block-col {
+	padding: 14px;
+	background: linear-gradient(180deg, rgba(var(--grad-1), 0.02) 0%, rgba(var(--grad-2), 0.02) 100%);
+}
+
+.block-col.block-x { border-left: 4px solid var(--x); }
+.block-col.block-y { border-left: 4px solid var(--y); }
 
 /* Week View Alignment Fix */
 .full-week-grid {
@@ -368,13 +413,14 @@ a { color: inherit; text-decoration: none; }
 	gap: 4px;
 }
 
-.course-name {
+
+.block-info .course-name {
 	font-weight: 800;
 	font-size: 0.95rem;
 	color: var(--text);
 }
 
-.teacher-name {
+.block-info .teacher-name {
 	font-size: 0.8rem;
 	color: var(--muted);
 }
@@ -434,20 +480,63 @@ a { color: inherit; text-decoration: none; }
 
 .double-badge {
 	position: absolute;
-	top: 8px;
-	right: 8px;
-	padding: 4px 10px;
+	top: -10px;
+	right: -10px;
+	padding: 6px 12px;
 	background: var(--y);
 	color: #fff;
-	border-radius: 6px;
-	font-size: 0.65rem;
+	border-radius: 20px;
+	font-size: 0.7rem;
 	font-weight: 800;
 	text-transform: uppercase;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .table-block {
 	display: flex;
-	flex-direction: column; gap: 6px;
+	flex-direction: column;
+	gap: 8px;
+	background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+	border: 1px solid var(--line);
+	border-radius: 16px;
+	padding: 18px 18px 16px;
+	position: relative;
+	min-height: 96px;
+	justify-content: center;
+	transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.table-block:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 14px 28px rgba(0,0,0,0.12);
+	border-color: rgba(var(--grad-1), 0.25);
+}
+
+.table-block .course-name {
+	font-weight: 800;
+	font-size: 1.08rem;
+	color: var(--text);
+	line-height: 1.2;
+}
+
+.table-block .teacher-name {
+	font-size: 0.9rem;
+	color: var(--muted);
+	font-weight: 600;
+}
+
+.room-number {
+	display: inline-block;
+	padding: 6px 12px;
+	background: rgba(var(--grad-2), 0.08);
+	border: 1px solid rgba(var(--grad-2), 0.12);
+	border-radius: 8px;
+	font-size: 0.75rem;
+	font-weight: 800;
+	color: var(--muted);
+	align-self: flex-start;
+	margin-top: 8px;
 }
 
 /* Button Styles */
