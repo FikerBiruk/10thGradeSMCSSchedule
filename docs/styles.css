@@ -507,6 +507,15 @@ a { color: inherit; text-decoration: none; }
 	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
+/* Double period stretching */
+.schedule-table td[rowspan="2"] {
+	vertical-align: middle;
+}
+
+.schedule-table td[rowspan="2"] .table-block {
+	min-height: 216px;
+}
+
 .table-block:hover {
 	transform: translateY(-2px);
 	box-shadow: 0 14px 28px rgba(0,0,0,0.12);
