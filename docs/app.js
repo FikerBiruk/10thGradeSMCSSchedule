@@ -524,7 +524,7 @@ function setupSettingsMenu() {
 	document.getElementById('redModeToggle')?.addEventListener('click', () => setTheme('red'));
 	document.addEventListener('click', e => { if (!menu.contains(e.target) && !btn.contains(e.target)) menu.classList.add('hidden'); });
 }
-
+//revert back if issues arrise
 function setTheme(theme) {
 	localStorage.setItem('smcs-schedule-theme', theme);
 	localStorage.removeItem('smcs-schedule-dark-mode');
