@@ -11,8 +11,29 @@ const firebaseConfig = {
 	measurementId: "G-33TVT5J6C6"
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+let db = null;
+try {
+	if (window.firebase) {
+		firebase.initializeApp(firebaseConfig);
+		db = firebase.database();
+	}
+} catch (err) {
+	console.warn('Firebase init failed; falling back to local-only mode.', err);
+}
+
+if (!db) {
+	db = {
+		ref() {
+			return {
+				on(_event, cb) {
+					if (typeof cb === 'function') cb({ val: () => null });
+					return () => {};
+				},
+				set(_value) { return Promise.resolve(); },
+			};
+		},
+	};
+}
 
 const AUTH_KEY = "smcs-schedule-admin-auth";
 const AUTH_USER_KEY = "smcs-schedule-admin-user";
@@ -70,12 +91,12 @@ const state = {
 document.addEventListener("DOMContentLoaded", () => {
 	const page = document.body.dataset.page;
 	loadDarkModePreference();
+					if (page === "public") renderPublicPage();
 
 	db.ref('schedule').on('value', (snapshot) => {
 		const data = snapshot.val();
 		state.schedule = ensureScheduleShape(data);
-		if (page === "public") renderPublicPage();
-		if (page === "admin") renderAdminPage();
+					if (page === "admin") renderAdminPage();
 	});
 
 	if (page === "public") initPublicPage();
