@@ -304,6 +304,33 @@ a { color: inherit; text-decoration: none; }
 	z-index: 5000;
 }
 
+/* Admin Trash Zone (drag-to-delete) */
+#trashZone {
+	position: fixed;
+	right: 22px;
+	bottom: 22px;
+	width: 120px;
+	height: 56px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+	border: 1px dashed var(--line);
+	color: var(--muted);
+	border-radius: 12px;
+	font-weight: 800;
+	box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+	transition: transform 0.12s ease, background 0.12s ease, color 0.12s ease;
+	z-index: 99999;
+}
+#trashZone.drag-over { transform: scale(1.03); background: rgba(255,127,135,0.12); color: var(--danger); border-color: var(--danger); }
+/* Hide by default on public pages; admin script will toggle visibility */
+body.public-page #trashZone, body.light-page #trashZone { display: none !important; }
+
+/* Lock/Undo buttons visual tweaks */
+.sidebar-actions .secondary-btn#lockDayButton.active { background: rgba(255, 203, 107, 0.12); border-color: var(--warning); color: var(--warning); }
+.sidebar-actions .secondary-btn#undoButton:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .settings-menu {
 	position: absolute;
 	top: calc(100% + 10px);

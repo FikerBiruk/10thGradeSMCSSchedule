@@ -61,6 +61,10 @@ const state = {
 	adminView: 'day',
 	currentWeekIdx: 0,
 	currentDay: "MON",
+	// per-day locks to prevent accidental edits
+	lockedDays: {},
+	// simple undo stack (stores recent schedule snapshots)
+	undoStack: [],
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -221,7 +225,12 @@ function renderAdminPage() {
 	document.getElementById("eventsEditor").innerHTML = renderEventsEditor(state.schedule);
 	updateSaveStatus();
 	setupDragAndDrop();
-}
+	// show trash in admin
+	const tz = document.getElementById('trashZone'); if (tz) tz.classList.remove('hidden');
+	// update undo button enabled/disabled state
+	const undoBtn = document.getElementById('undoButton'); if (undoBtn) undoBtn.disabled = state.undoStack.length === 0;
+	// update lock UI
+	updateLockUI();
 
 function renderAdminWeekGrid() {
 	const weekData = state.schedule.weeks[state.currentWeekIdx];
@@ -260,10 +269,23 @@ function renderAdminBlock(block, key, idx) {
 	const periods = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
 	let conflict = false;
 	if (!empty) {
+		// Existing course duplication heuristic (non-adjacent duplicate)
 		periods.forEach((p, pIdx) => {
 			if (pIdx !== idx && p[key].course === block.course) {
 				if (Math.abs(pIdx - idx) > 1 || (Number(block.length) !== 2 && Number(p[key].length) !== 2)) conflict = true;
 			}
+		});
+		// Teacher/Room conflicts: same teacher or room scheduled at the same period index across any day/block
+		const week = state.schedule.weeks[state.currentWeekIdx];
+		DAYS.forEach(d => {
+			const otherPeriods = week[d][idx];
+			['x','y'].forEach(k => {
+				const ob = otherPeriods[k];
+				if (ob.course !== 'None') {
+					if (ob.teacher && ob.teacher === block.teacher && (d !== state.currentDay || k !== key)) conflict = true;
+					if (ob.room && ob.room === block.room && (d !== state.currentDay || k !== key)) conflict = true;
+				}
+			});
 		});
 	}
 	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''} ${conflict ? 'has-conflict' : ''} ${empty ? 'is-empty' : ''}" draggable="${!empty}" data-period-index="${idx}" data-block-key="${key}">
@@ -286,6 +308,7 @@ function setupDragAndDrop() {
 
 	const dayZones = document.querySelectorAll('.admin-table td.block-col');
 	const weekZones = document.querySelectorAll('.admin-cell');
+	const trashZone = document.getElementById('trashZone');
 
 	cards.forEach(c => c.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', 'lib:' + c.dataset.course)));
 
@@ -300,6 +323,8 @@ function setupDragAndDrop() {
 		e.preventDefault(); zone.classList.remove('drag-over');
 		const raw = e.dataTransfer.getData('text/plain');
 		if (!raw) return;
+		// prevent changes on locked days
+		if (state.lockedDays && state.lockedDays[d]) { alert('This day is locked. Unlock to make changes.'); return; }
 		handleSelection(idx, key, raw, e, zone, d);
 	};
 
@@ -320,11 +345,35 @@ function setupDragAndDrop() {
 		z.addEventListener('drop', e => handleDrop(e, z, d, i, k));
 		z.addEventListener('click', () => { if (state.selectedCourse) handleSelection(i, k, 'lib:' + state.selectedCourse, null, z, d); });
 	});
+
+	// Trash zone: accept drops to delete a block
+	if (trashZone) {
+		trashZone.addEventListener('dragover', e => { e.preventDefault(); trashZone.classList.add('drag-over'); e.dataTransfer.dropEffect = 'move'; });
+		trashZone.addEventListener('dragleave', () => trashZone.classList.remove('drag-over'));
+		trashZone.addEventListener('drop', e => {
+			e.preventDefault(); trashZone.classList.remove('drag-over');
+			const raw = e.dataTransfer.getData('text/plain');
+			if (!raw) return;
+			if (raw.startsWith('table:')) {
+				const src = JSON.parse(raw.replace('table:', ''));
+				// respect locks
+				if (state.lockedDays && state.lockedDays[src.day]) { alert('This day is locked. Unlock to make changes.'); return; }
+				pushUndo();
+				const week = state.schedule.weeks[state.currentWeekIdx];
+				week[src.day][Number(src.idx)][src.key] = { ...EMPTY_BLOCK };
+				saveSchedule(state.schedule);
+				renderAdminPage();
+			}
+		});
+	}
 }
 
 function handleSelection(tIdx, key, raw, event, zone, day) {
 	const week = state.schedule.weeks[state.currentWeekIdx];
 	const currentBlock = week[day][tIdx][key];
+
+	// prevent edits if the day is locked
+	if (state.lockedDays && state.lockedDays[day]) { alert('This day is locked. Unlock to make changes.'); return; }
 
 	if (Number(currentBlock.length) === 2 && event && zone.classList.contains('block-col')) {
 		const rect = zone.getBoundingClientRect();
@@ -332,24 +381,55 @@ function handleSelection(tIdx, key, raw, event, zone, day) {
 	}
 
 	if (raw.startsWith('lib:')) {
+		// placing from library - behaves like copy
 		const course = raw.replace('lib:', '');
 		const block = week[day][tIdx][key];
+		pushUndo();
 		block.course = course;
 		const lib = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
 		block.teacher = lib.teacher; block.room = lib.room; block.length = 1;
 		delete block.forceSingle;
+		saveSchedule(state.schedule);
+		return;
 	} else if (raw.startsWith('table:')) {
 		const src = JSON.parse(raw.replace('table:', ''));
 		if (src.day == day && src.idx == tIdx && src.key == key) return;
+
 		const sBlock = week[src.day][src.idx][src.key];
 		const tBlock = week[day][tIdx][key];
-		const temp = { ...sBlock };
+		const temp = JSON.parse(JSON.stringify(sBlock));
+
+		// Ctrl key => copy source to target (leave source intact)
+		if (event && event.ctrlKey) {
+			pushUndo();
+			tBlock.course = temp.course; tBlock.teacher = temp.teacher; tBlock.room = temp.room; tBlock.length = temp.length || 1;
+			delete tBlock.forceSingle;
+			saveSchedule(state.schedule);
+			return;
+		}
+
+		// Shift key => insert/shift mode: shift target and following down by one
+		if (event && event.shiftKey) {
+			pushUndo();
+			// shift down within target day for the same key
+			for (let i = 3; i > tIdx; i--) {
+				week[day][i][key] = JSON.parse(JSON.stringify(week[day][i-1][key]));
+			}
+			// place source into target
+			week[day][tIdx][key] = temp;
+			saveSchedule(state.schedule);
+			return;
+		}
+
+		// Default behavior: swap source and target
+		pushUndo();
 		sBlock.course = tBlock.course; sBlock.teacher = tBlock.teacher; sBlock.room = tBlock.room; sBlock.length = 1;
 		delete sBlock.forceSingle;
-		tBlock.course = temp.course; tBlock.teacher = temp.teacher; tBlock.room = temp.room; tBlock.length = 1;
+		tBlock.course = temp.course; tBlock.teacher = temp.teacher; tBlock.room = temp.room; tBlock.length = temp.length || 1;
 		delete tBlock.forceSingle;
+		saveSchedule(state.schedule);
+		return;
 	}
-	saveSchedule(state.schedule);
 }
 
 function handleAdminLogin(event) {
@@ -390,6 +470,9 @@ function initAdminPage() {
 	document.getElementById("adminWeekViewBtn")?.addEventListener("click", () => { state.adminView = 'week'; renderAdminPage(); });
 	document.getElementById("adminDaySelect")?.addEventListener("change", e => { state.currentDay = e.target.value; renderAdminPage(); });
 	document.getElementById("logoutButton")?.addEventListener("click", handleLogout);
+	// Admin controls: undo & lock day
+	document.getElementById('undoButton')?.addEventListener('click', () => undo());
+	document.getElementById('lockDayButton')?.addEventListener('click', () => toggleLockDay());
 
 	const app = document.getElementById("adminApp");
 	app.addEventListener("change", handleAdminInput);
@@ -544,6 +627,41 @@ function loadDarkModePreference() {
 
 	const legacy = localStorage.getItem('smcs-schedule-dark-mode');
 	setTheme(legacy === null ? 'dark' : legacy === 'true' ? 'dark' : 'light');
+}
+
+function pushUndo() {
+	try {
+		const snapshot = JSON.parse(JSON.stringify(state.schedule));
+		state.undoStack = state.undoStack || [];
+		state.undoStack.push(snapshot);
+		// keep stack bounded
+		if (state.undoStack.length > 20) state.undoStack.shift();
+	} catch (e) { /* ignore */ }
+}
+
+function undo() {
+	if (!state.undoStack || !state.undoStack.length) return;
+	const prev = state.undoStack.pop();
+	if (prev) {
+		state.schedule = prev;
+		saveSchedule(state.schedule);
+		renderAdminPage();
+	}
+}
+
+function toggleLockDay() {
+	const day = state.currentDay;
+	state.lockedDays = state.lockedDays || {};
+	state.lockedDays[day] = !state.lockedDays[day];
+	updateLockUI();
+}
+
+function updateLockUI() {
+	const btn = document.getElementById('lockDayButton');
+	if (!btn) return;
+	const locked = state.lockedDays && state.lockedDays[state.currentDay];
+	btn.classList.toggle('active', !!locked);
+	btn.textContent = locked ? 'Day Locked' : 'Lock Day';
 }
 
 function updateSaveStatus() {

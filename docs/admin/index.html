@@ -41,6 +41,8 @@
 					<a class="secondary-btn" href="../">Public View</a>
 					<button id="logoutButton" class="ghost-btn" type="button">Logout</button>
 					<div class="sidebar-actions">
+						<button id="undoButton" class="secondary-btn" type="button">Undo</button>
+						<button id="lockDayButton" class="secondary-btn" type="button">Lock Day</button>
 						<button id="settingsButton" class="secondary-btn" type="button">Settings</button>
 						<div id="settingsMenu" class="settings-menu hidden">
 							<button id="darkModeToggle" class="settings-item" type="button">Dark Mode</button>
@@ -106,5 +108,8 @@
 	<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 	<script src="../app.js"></script>
+
+	<!-- Trash zone (admin only) -->
+	<div id="trashZone" title="Drop here to delete" aria-hidden="false">🗑️ Trash</div>
 </body>
 </html>
