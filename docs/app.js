@@ -252,6 +252,7 @@ function renderAdminPage() {
 	const undoBtn = document.getElementById('undoButton'); if (undoBtn) undoBtn.disabled = state.undoStack.length === 0;
 	// update lock UI
 	updateLockUI();
+}
 
 function renderAdminWeekGrid() {
 	const weekData = state.schedule.weeks[state.currentWeekIdx];
