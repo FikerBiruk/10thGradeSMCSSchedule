@@ -274,6 +274,42 @@ a { color: inherit; text-decoration: none; }
 .admin-cell { cursor: grab; z-index: 100; }
 .admin-cell:active { cursor: grabbing; }
 
+.lock-toggle-btn {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	width: 30px;
+	height: 30px;
+	border-radius: 999px;
+	border: 1px solid var(--line);
+	background: rgba(var(--grad-1), 0.08);
+	color: var(--muted);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	z-index: 3;
+	transition: transform 0.16s ease, background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+.lock-toggle-btn:hover { transform: scale(1.05); background: rgba(var(--grad-1), 0.16); color: var(--accent); }
+.lock-toggle-btn.locked {
+	background: rgba(255, 203, 107, 0.15);
+	border-color: rgba(255, 203, 107, 0.45);
+	color: var(--warning);
+}
+.admin-block-cell.is-locked,
+.admin-cell.is-locked {
+	box-shadow: inset 0 0 0 1px rgba(255, 203, 107, 0.18);
+}
+.admin-block-cell.is-locked {
+	cursor: not-allowed;
+}
+.admin-block-cell.is-locked .room-input,
+.admin-block-cell.is-locked .toggle-double-btn {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
 /* Special Events UI */
 .event-feed { display: grid; gap: 16px; }
 .event-card {
@@ -303,29 +339,6 @@ a { color: inherit; text-decoration: none; }
 	position: relative;
 	z-index: 5000;
 }
-
-/* Admin Trash Zone (drag-to-delete) */
-#trashZone {
-	position: fixed;
-	right: 22px;
-	bottom: 22px;
-	width: 120px;
-	height: 56px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-	border: 1px dashed var(--line);
-	color: var(--muted);
-	border-radius: 12px;
-	font-weight: 800;
-	box-shadow: 0 8px 20px rgba(0,0,0,0.12);
-	transition: transform 0.12s ease, background 0.12s ease, color 0.12s ease;
-	z-index: 99999;
-}
-#trashZone.drag-over { transform: scale(1.03); background: rgba(255,127,135,0.12); color: var(--danger); border-color: var(--danger); }
-/* Hide by default on public pages; admin script will toggle visibility */
-body.public-page #trashZone, body.light-page #trashZone { display: none !important; }
 
 /* Lock/Undo buttons visual tweaks */
 .sidebar-actions .secondary-btn#lockDayButton.active { background: rgba(255, 203, 107, 0.12); border-color: var(--warning); color: var(--warning); }
@@ -413,6 +426,12 @@ body.public-page #trashZone, body.light-page #trashZone { display: none !importa
 	transition: all 0.2s;
 }
 .admin-block-cell:hover { background: var(--surface-2); }
+.admin-block-cell .block-info,
+.admin-block-cell .block-controls,
+.admin-block-cell .double-badge {
+	position: relative;
+	z-index: 1;
+}
 .admin-block-cell.is-double {
 	background: rgba(132, 165, 255, 0.1);
 	border-color: var(--y);
@@ -424,6 +443,10 @@ body.public-page #trashZone, body.light-page #trashZone { display: none !importa
 .admin-block-cell.has-conflict {
 	background: rgba(255, 127, 135, 0.1);
 	border-color: var(--danger);
+}
+.admin-cell .lock-toggle-btn,
+.admin-block-cell .lock-toggle-btn {
+	opacity: 0.96;
 }
 
 .empty-placeholder {
@@ -517,6 +540,11 @@ body.public-page #trashZone, body.light-page #trashZone { display: none !importa
 	font-weight: 800;
 	text-transform: uppercase;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.admin-block-cell .double-badge {
+	top: auto;
+	bottom: -10px;
+	right: -10px;
 }
 
 .table-block {

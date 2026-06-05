@@ -86,6 +86,8 @@ const state = {
 	lockedDays: {},
 	// simple undo stack (stores recent schedule snapshots)
 	undoStack: [],
+	// active drag metadata for drag-out delete handling
+	dragContext: null,
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -246,8 +248,6 @@ function renderAdminPage() {
 	document.getElementById("eventsEditor").innerHTML = renderEventsEditor(state.schedule);
 	updateSaveStatus();
 	setupDragAndDrop();
-	// show trash in admin
-	const tz = document.getElementById('trashZone'); if (tz) tz.classList.remove('hidden');
 	// update undo button enabled/disabled state
 	const undoBtn = document.getElementById('undoButton'); if (undoBtn) undoBtn.disabled = state.undoStack.length === 0;
 	// update lock UI
@@ -270,11 +270,12 @@ function renderAdminWeekGrid() {
 				if (!isCovered) {
 					const isDouble = Number(block.length) === 2;
 					const empty = block.course === "None";
-					h += `<div class="week-cell admin-cell ${key} ${empty ? 'empty' : 'has-class'} ${isDouble ? 'row-span-2' : ''}"
+					const locked = !!block.locked;
+					h += `<div class="week-cell admin-cell ${key} ${empty ? 'empty' : 'has-class'} ${locked ? 'is-locked' : ''} ${isDouble ? 'row-span-2' : ''}"
 						style="grid-column: ${dIdx + 2}; grid-row: ${pIdx + 2} / span ${isDouble ? 2 : 1};"
-						draggable="${!empty}" data-day="${day}" data-period-index="${pIdx}" data-block="${key}">
+						draggable="${!empty && !locked}" data-day="${day}" data-period-index="${pIdx}" data-block="${key}">
 						<span class="sub-label">${key.toUpperCase()}</span>
-						<div class="week-course">${empty ? 'Empty' : escapeHtml(block.course)}</div>
+						${empty ? '<div class="empty-placeholder">Empty</div>' : `${renderLockButton(block, pIdx, key, day)}<div class="week-course">${escapeHtml(block.course)}</div>`}
 					</div>`;
 				}
 			});
@@ -288,6 +289,7 @@ function renderAdminWeekGrid() {
 function renderAdminBlock(block, key, idx) {
 	const isDouble = Number(block.length) === 2;
 	const empty = block.course === "None";
+	const locked = !!block.locked;
 	const periods = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
 	let conflict = false;
 	if (!empty) {
@@ -310,17 +312,24 @@ function renderAdminBlock(block, key, idx) {
 			});
 		});
 	}
-	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''} ${conflict ? 'has-conflict' : ''} ${empty ? 'is-empty' : ''}" draggable="${!empty}" data-period-index="${idx}" data-block-key="${key}">
+	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''} ${locked ? 'is-locked' : ''} ${conflict ? 'has-conflict' : ''} ${empty ? 'is-empty' : ''}" draggable="${!empty && !locked}" data-period-index="${idx}" data-block-key="${key}">
 		${empty ? '<div class="empty-placeholder">Empty</div>' : `
+		${renderLockButton(block, idx, key, state.currentDay)}
 		<div class="block-info"><div class="course-name">${escapeHtml(block.course)}</div><div class="teacher-name">${escapeHtml(block.teacher)}</div></div>
-		<div class="block-controls"><input type="text" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}" autocomplete="off">
-		<div class="block-actions"><button class="toggle-double-btn ${isDouble ? 'active' : ''}" data-action="toggle-double" data-period-index="${idx}" data-block-key="${key}">Double</button></div></div>
+		<div class="block-controls"><input type="text" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}" autocomplete="off" ${locked ? 'disabled' : ''}>
+		<div class="block-actions"><button class="toggle-double-btn ${isDouble ? 'active' : ''}" data-action="toggle-double" data-period-index="${idx}" data-block-key="${key}" ${locked ? 'disabled' : ''}>Double</button></div></div>
 		${isDouble ? '<div class="double-badge">Double</div>' : ''}`}
 	</div>`;
 }
 
 function renderClassCards() {
 	return COURSES.map(c => `<div class="class-card draggable-card" draggable="true" data-course="${c}"><div class="card-title">${c}</div><div class="card-teacher">${COURSE_LIBRARY[c].teacher}</div><div class="card-room">Room ${COURSE_LIBRARY[c].room}</div></div>`).join('');
+}
+
+function renderLockButton(block, idx, key, day) {
+	const locked = !!block.locked;
+	const label = locked ? 'Unlock class' : 'Lock class';
+	return `<button type="button" class="lock-toggle-btn ${locked ? 'locked' : ''}" draggable="false" data-action="toggle-lock" data-day="${day}" data-period-index="${idx}" data-block-key="${key}" aria-label="${label}" title="${label}">${locked ? '🔒' : '🔓'}</button>`;
 }
 
 function setupDragAndDrop() {
@@ -330,21 +339,29 @@ function setupDragAndDrop() {
 
 	const dayZones = document.querySelectorAll('.admin-table td.block-col');
 	const weekZones = document.querySelectorAll('.admin-cell');
-	const trashZone = document.getElementById('trashZone');
 
-	cards.forEach(c => c.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', 'lib:' + c.dataset.course)));
+	cards.forEach(c => c.addEventListener('dragstart', e => {
+		state.dragContext = { sourceType: 'library', handled: false };
+		e.dataTransfer.setData('text/plain', 'lib:' + c.dataset.course);
+	}));
 
 	[...tableBlocks, ...weekBlocks].forEach(b => {
 		b.addEventListener('dragstart', e => {
-			const info = { day: b.dataset.day || state.currentDay, idx: b.dataset.periodIndex, key: b.dataset.blockKey || b.dataset.block };
+			if (e.target && e.target.closest && e.target.closest('button,input,textarea,select')) return;
+			const info = { day: b.dataset.day || state.currentDay, idx: Number(b.dataset.periodIndex), key: b.dataset.blockKey || b.dataset.block };
+			const week = state.schedule.weeks[state.currentWeekIdx];
+			const sourceBlock = week[info.day]?.[info.idx]?.[info.key];
+			state.dragContext = { sourceType: 'table', handled: false, ...info, block: JSON.parse(JSON.stringify(sourceBlock || EMPTY_BLOCK)) };
 			e.dataTransfer.setData('text/plain', 'table:' + JSON.stringify(info));
 		});
+		b.addEventListener('dragend', () => finalizeDragOutDelete());
 	});
 
 	const handleDrop = (e, zone, d, idx, key) => {
 		e.preventDefault(); zone.classList.remove('drag-over');
 		const raw = e.dataTransfer.getData('text/plain');
 		if (!raw) return;
+		if (state.dragContext) state.dragContext.handled = true;
 		// prevent changes on locked days
 		if (state.lockedDays && state.lockedDays[d]) { alert('This day is locked. Unlock to make changes.'); return; }
 		handleSelection(idx, key, raw, e, zone, d);
@@ -368,25 +385,22 @@ function setupDragAndDrop() {
 		z.addEventListener('click', () => { if (state.selectedCourse) handleSelection(i, k, 'lib:' + state.selectedCourse, null, z, d); });
 	});
 
-	// Trash zone: accept drops to delete a block
-	if (trashZone) {
-		trashZone.addEventListener('dragover', e => { e.preventDefault(); trashZone.classList.add('drag-over'); e.dataTransfer.dropEffect = 'move'; });
-		trashZone.addEventListener('dragleave', () => trashZone.classList.remove('drag-over'));
-		trashZone.addEventListener('drop', e => {
-			e.preventDefault(); trashZone.classList.remove('drag-over');
-			const raw = e.dataTransfer.getData('text/plain');
-			if (!raw) return;
-			if (raw.startsWith('table:')) {
-				const src = JSON.parse(raw.replace('table:', ''));
-				// respect locks
-				if (state.lockedDays && state.lockedDays[src.day]) { alert('This day is locked. Unlock to make changes.'); return; }
-				pushUndo();
-				const week = state.schedule.weeks[state.currentWeekIdx];
-				week[src.day][Number(src.idx)][src.key] = { ...EMPTY_BLOCK };
-				saveSchedule(state.schedule);
-				renderAdminPage();
-			}
-		});
+	function finalizeDragOutDelete() {
+		const ctx = state.dragContext;
+		state.dragContext = null;
+		if (!ctx || ctx.sourceType !== 'table' || ctx.handled) return;
+		const week = state.schedule.weeks[state.currentWeekIdx];
+		const srcDay = ctx.day;
+		const srcIdx = Number(ctx.idx);
+		const srcKey = ctx.key;
+		const srcBlock = ctx.block || week[srcDay]?.[srcIdx]?.[srcKey];
+		if (!srcDay || Number.isNaN(srcIdx) || !srcKey) return;
+		if (state.lockedDays && state.lockedDays[srcDay]) return;
+		if (week[srcDay]?.[srcIdx]?.[srcKey]?.locked) return;
+		pushUndo();
+		clearBlockAt(week, srcDay, srcIdx, srcKey, srcBlock);
+		saveSchedule(state.schedule);
+		renderAdminPage();
 	}
 }
 
@@ -396,6 +410,7 @@ function handleSelection(tIdx, key, raw, event, zone, day) {
 
 	// prevent edits if the day is locked
 	if (state.lockedDays && state.lockedDays[day]) { alert('This day is locked. Unlock to make changes.'); return; }
+	if (currentBlock.locked) { alert('This class is locked. Unlock it first.'); return; }
 
 	if (Number(currentBlock.length) === 2 && event && zone.classList.contains('block-col')) {
 		const rect = zone.getBoundingClientRect();
@@ -420,6 +435,9 @@ function handleSelection(tIdx, key, raw, event, zone, day) {
 		const sBlock = week[src.day][src.idx][src.key];
 		const tBlock = week[day][tIdx][key];
 		const temp = JSON.parse(JSON.stringify(sBlock));
+
+		if (sBlock.locked) { alert('This class is locked. Unlock it first.'); return; }
+		if (tBlock.locked) { alert('This class is locked. Unlock it first.'); return; }
 
 		// Ctrl key => copy source to target (leave source intact)
 		if (event && event.ctrlKey) {
@@ -507,7 +525,9 @@ function handleAdminInput(event) {
 	const target = event.target;
 	if (target.hasAttribute('data-room-edit')) {
 		const idx = Number(target.dataset.periodIndex), key = target.dataset.blockKey;
-		state.schedule.weeks[state.currentWeekIdx][state.currentDay][idx][key].room = target.value;
+		const block = state.schedule.weeks[state.currentWeekIdx][state.currentDay][idx][key];
+		if (block.locked) return;
+		block.room = target.value;
 		saveSchedule(state.schedule);
 	}
 	if (target.hasAttribute('data-event-field')) {
@@ -523,6 +543,17 @@ function handleAdminClick(event) {
 	if (target.closest("#exportButton")) exportSchedule();
 	if (target.closest("#addEventButton")) addEventRow();
 	if (target.closest("[data-action='delete-event']")) deleteEventRow(Number(target.closest("[data-action='delete-event']").dataset.eventIndex));
+	if (target.closest("[data-action='toggle-lock']")) {
+		const btn = target.closest("[data-action='toggle-lock']");
+		const day = btn.dataset.day || state.currentDay;
+		const idx = Number(btn.dataset.periodIndex), key = btn.dataset.blockKey;
+		const block = state.schedule.weeks[state.currentWeekIdx][day][idx][key];
+		if (state.lockedDays && state.lockedDays[day]) { alert('This day is locked. Unlock to change block locks.'); return; }
+		block.locked = !block.locked;
+		saveSchedule(state.schedule);
+		renderAdminPage();
+		return;
+	}
 	if (target.closest("[data-action='toggle-description']")) {
 		const btn = target.closest("[data-action='toggle-description']");
 		const el = document.querySelector(`.desc-container[data-event-index="${btn.dataset.eventIndex}"]`);
@@ -533,6 +564,7 @@ function handleAdminClick(event) {
 		const idx = Number(btn.dataset.periodIndex), key = btn.dataset.blockKey;
 		const periods = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
 		const block = periods[idx][key];
+		if (block.locked) { alert('This class is locked. Unlock it first.'); return; }
 
 		if (idx >= 3 && Number(block.length) === 1) {
 			alert("Period 4 cannot be a double period start.");
@@ -614,9 +646,17 @@ function ensureScheduleShape(s) {
 }
 
 function normalizeBlock(b) {
-	if (!b || b.course === "None") return { course: "None", teacher: "", room: "", length: 1, note: "" };
+	if (!b || b.course === "None") return { course: "None", teacher: "", room: "", length: 1, note: "", locked: false };
 	const d = COURSE_LIBRARY[b.course] || COURSE_LIBRARY.Bio;
-	return { course: b.course || "Bio", teacher: b.teacher || d.teacher, room: b.room || d.room, length: Number(b.length) === 2 ? 2 : 1, note: b.note || "", forceSingle: b.forceSingle || false };
+	return { course: b.course || "Bio", teacher: b.teacher || d.teacher, room: b.room || d.room, length: Number(b.length) === 2 ? 2 : 1, note: b.note || "", forceSingle: b.forceSingle || false, locked: !!b.locked };
+}
+
+function clearBlockAt(week, day, idx, key, sourceBlock) {
+	if (!week[day] || !week[day][idx]) return;
+	week[day][idx][key] = { ...EMPTY_BLOCK };
+	if (sourceBlock && Number(sourceBlock.length) === 2 && week[day][idx + 1]) {
+		week[day][idx + 1][key] = { ...EMPTY_BLOCK };
+	}
 }
 
 function setupSettingsMenu() {
