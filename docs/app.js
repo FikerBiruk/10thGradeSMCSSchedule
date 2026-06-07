@@ -299,17 +299,15 @@ function renderAdminBlock(block, key, idx) {
 				if (Math.abs(pIdx - idx) > 1 || (Number(block.length) !== 2 && Number(p[key].length) !== 2)) conflict = true;
 			}
 		});
-		// Teacher/Room conflicts: same teacher or room scheduled at the same period index across any day/block
-		const week = state.schedule.weeks[state.currentWeekIdx];
-		DAYS.forEach(d => {
-			const otherPeriods = week[d][idx];
-			['x','y'].forEach(k => {
-				const ob = otherPeriods[k];
-				if (ob.course !== 'None') {
-					if (ob.teacher && ob.teacher === block.teacher && (d !== state.currentDay || k !== key)) conflict = true;
-					if (ob.room && ob.room === block.room && (d !== state.currentDay || k !== key)) conflict = true;
-				}
-			});
+		// Teacher/room conflicts: same day, same time slot, opposite group(s)
+		const otherKey = key === 'x' ? 'y' : 'x';
+		const slotIndexes = [idx];
+		if (isDouble && idx + 1 < periods.length) slotIndexes.push(idx + 1);
+		slotIndexes.forEach(slotIdx => {
+			const sibling = periods[slotIdx]?.[otherKey];
+			if (!sibling || sibling.course === 'None') return;
+			if (block.teacher && sibling.teacher && sibling.teacher === block.teacher) conflict = true;
+			if (block.room && sibling.room && sibling.room === block.room) conflict = true;
 		});
 	}
 	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''} ${locked ? 'is-locked' : ''} ${conflict ? 'has-conflict' : ''} ${empty ? 'is-empty' : ''}" draggable="${!empty && !locked}" data-period-index="${idx}" data-block-key="${key}">
@@ -646,9 +644,10 @@ function ensureScheduleShape(s) {
 }
 
 function normalizeBlock(b) {
-	if (!b || b.course === "None") return { course: "None", teacher: "", room: "", length: 1, note: "", locked: false };
-	const d = COURSE_LIBRARY[b.course] || COURSE_LIBRARY.Bio;
-	return { course: b.course || "Bio", teacher: b.teacher || d.teacher, room: b.room || d.room, length: Number(b.length) === 2 ? 2 : 1, note: b.note || "", forceSingle: b.forceSingle || false, locked: !!b.locked };
+	const course = typeof b?.course === 'string' ? b.course.trim() : b?.course;
+	if (!course || course === "None") return { course: "None", teacher: "", room: "", length: 1, note: "", locked: !!b?.locked };
+	const d = COURSE_LIBRARY[course] || COURSE_LIBRARY.Bio;
+	return { course, teacher: b.teacher || d.teacher, room: b.room || d.room, length: Number(b.length) === 2 ? 2 : 1, note: b.note || "", forceSingle: b.forceSingle || false, locked: !!b.locked };
 }
 
 function clearBlockAt(week, day, idx, key, sourceBlock) {
