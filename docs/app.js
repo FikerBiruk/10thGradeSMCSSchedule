@@ -713,8 +713,18 @@ function undo() {
 function toggleLockDay() {
 	const day = state.currentDay;
 	state.lockedDays = state.lockedDays || {};
-	state.lockedDays[day] = !state.lockedDays[day];
-	updateLockUI();
+	const newState = !state.lockedDays[day];
+	state.lockedDays[day] = newState;
+
+	// Also sync all individual blocks for this day
+	const periods = state.schedule.weeks[state.currentWeekIdx][day];
+	periods.forEach(p => {
+		p.x.locked = newState;
+		p.y.locked = newState;
+	});
+
+	saveSchedule(state.schedule);
+	renderAdminPage();
 }
 
 function updateLockUI() {
@@ -722,7 +732,7 @@ function updateLockUI() {
 	if (!btn) return;
 	const locked = !!(state.lockedDays && state.lockedDays[state.currentDay]);
 	btn.classList.toggle('active', locked);
-	btn.innerHTML = `<span class="btn-icon">${locked ? '🔒' : '🔓'}</span> ${locked ? 'Day Locked' : 'Lock Day'}`;
+	btn.innerHTML = `<span class="btn-icon">${locked ? '🔒' : '🔓'}</span> ${locked ? 'Unlock Day' : 'Lock Day'}`;
 }
 
 function updateSaveStatus() {
