@@ -98,7 +98,8 @@ document.addEventListener("DOMContentLoaded", () => {
 	db.ref('schedule').on('value', (snapshot) => {
 		const data = snapshot.val();
 		state.schedule = ensureScheduleShape(data);
-					if (page === "admin") renderAdminPage();
+		state.lockedDays = data?.lockedDays || {};
+		if (page === "admin") renderAdminPage();
 	});
 
 	if (page === "public") initPublicPage();
@@ -109,7 +110,10 @@ function saveSchedule(s) {
 	const n = ensureScheduleShape(s);
 	applyAutoMerge(n);
 	state.schedule = n;
-	db.ref('schedule').set(n);
+	db.ref('schedule').set({
+		...n,
+		lockedDays: state.lockedDays || {}
+	});
 	return n;
 }
 
@@ -326,8 +330,10 @@ function renderClassCards() {
 
 function renderLockButton(block, idx, key, day) {
 	const locked = !!block.locked;
+	const dayLocked = !!(state.lockedDays && state.lockedDays[day]);
 	const label = locked ? 'Unlock class' : 'Lock class';
-	return `<button type="button" class="lock-toggle-btn ${locked ? 'locked' : ''}" draggable="false" data-action="toggle-lock" data-day="${day}" data-period-index="${idx}" data-block-key="${key}" aria-label="${label}" title="${label}">${locked ? '🔒' : '🔓'}</button>`;
+	const title = dayLocked ? 'Day is locked (Unlock Day to edit)' : label;
+	return `<button type="button" class="lock-toggle-btn ${locked ? 'locked' : ''}" draggable="false" data-action="toggle-lock" data-day="${day}" data-period-index="${idx}" data-block-key="${key}" aria-label="${label}" title="${title}" ${dayLocked ? 'style="opacity: 0.6; cursor: not-allowed;"' : ''}>${locked ? '🔒' : '🔓'}</button>`;
 }
 
 function setupDragAndDrop() {
@@ -716,12 +722,14 @@ function toggleLockDay() {
 	const newState = !state.lockedDays[day];
 	state.lockedDays[day] = newState;
 
-	// Also sync all individual blocks for this day
-	const periods = state.schedule.weeks[state.currentWeekIdx][day];
-	periods.forEach(p => {
-		p.x.locked = newState;
-		p.y.locked = newState;
-	});
+	// Explicitly force all blocks for this day into the new lock state
+	const week = state.schedule.weeks[state.currentWeekIdx];
+	if (week && week[day]) {
+		week[day].forEach(p => {
+			if (p.x) p.x.locked = newState;
+			if (p.y) p.y.locked = newState;
+		});
+	}
 
 	saveSchedule(state.schedule);
 	renderAdminPage();
