@@ -720,9 +720,9 @@ function toggleLockDay() {
 function updateLockUI() {
 	const btn = document.getElementById('lockDayButton');
 	if (!btn) return;
-	const locked = state.lockedDays && state.lockedDays[state.currentDay];
-	btn.classList.toggle('active', !!locked);
-	btn.textContent = locked ? 'Day Locked' : 'Lock Day';
+	const locked = !!(state.lockedDays && state.lockedDays[state.currentDay]);
+	btn.classList.toggle('active', locked);
+	btn.innerHTML = `<span class="btn-icon">${locked ? '🔒' : '🔓'}</span> ${locked ? 'Day Locked' : 'Lock Day'}`;
 }
 
 function updateSaveStatus() {

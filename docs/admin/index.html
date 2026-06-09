@@ -38,23 +38,21 @@
 					<p class="lede">Drag classes from the panel and drop them into the schedule. Click room numbers to edit.</p>
 				</div>
 				<div class="hero-actions">
-					<a class="secondary-btn" href="../">Public View</a>
-					<button id="logoutButton" class="ghost-btn" type="button">Logout</button>
-					<div class="sidebar-actions">
-						<button id="undoButton" class="secondary-btn" type="button">Undo</button>
-						<button id="lockDayButton" class="secondary-btn" type="button">Lock Day</button>
-						<button id="settingsButton" class="secondary-btn" type="button">Settings</button>
+					<a class="secondary-btn" href="../"><span class="btn-icon">👁</span> Public View</a>
+					<div class="settings-wrapper">
+						<button id="settingsButton" class="secondary-btn" type="button"><span class="btn-icon">⚙</span> Settings</button>
 						<div id="settingsMenu" class="settings-menu hidden">
 							<button id="darkModeToggle" class="settings-item" type="button">Dark Mode</button>
 							<button id="lightModeToggle" class="settings-item" type="button">Light Mode</button>
 							<button id="redModeToggle" class="settings-item" type="button">Red Mode</button>
 						</div>
 					</div>
+					<button id="logoutButton" class="ghost-btn" type="button"><span class="btn-icon">🚪</span> Logout</button>
 				</div>
 			</header>
 
-			<div class="surface toolbar-panel" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 16px; flex-wrap: wrap;">
-				<div class="toolbar-actions" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+			<div class="surface toolbar-panel">
+				<div class="toolbar-section">
 					<div class="view-toggle">
 						<button id="adminDayViewBtn" class="toggle-btn active">Day Editor</button>
 						<button id="adminWeekViewBtn" class="toggle-btn">Week Editor</button>
@@ -68,10 +66,27 @@
 							<option value="FRI">Friday</option>
 						</select>
 					</div>
-					<button id="clearAllButton" class="danger-btn" type="button">Clear Day</button>
-					<button id="exportButton" class="secondary-btn" type="button">Export JSON</button>
 				</div>
-				<p id="saveStatus" class="save-status" style="font-weight: 800; color: var(--accent); font-size: 0.75rem; text-transform: uppercase;">Synced</p>
+
+				<div class="toolbar-section">
+					<div class="button-group">
+						<button id="undoButton" class="secondary-btn" type="button" title="Undo Last Action">
+							<span class="btn-icon">↩</span> Undo
+						</button>
+						<button id="lockDayButton" class="secondary-btn" type="button">
+							<span class="btn-icon">🔓</span> Lock Day
+						</button>
+					</div>
+				</div>
+
+				<div class="toolbar-section">
+					<button id="exportButton" class="secondary-btn" type="button"><span class="btn-icon">💾</span> Export JSON</button>
+					<button id="clearAllButton" class="danger-btn" type="button"><span class="btn-icon">🗑</span> Clear Day</button>
+					<div class="status-indicator">
+						<div class="status-dot"></div>
+						<span id="saveStatus" class="save-status">Synced</span>
+					</div>
+				</div>
 			</div>
 
 			<div class="admin-grid-2">
@@ -96,7 +111,7 @@
 						<p class="eyebrow">Events</p>
 						<h2>Manage Bulletin</h2>
 					</div>
-					<button id="addEventButton" class="primary-btn" type="button">Add Event</button>
+					<button id="addEventButton" class="primary-btn" type="button"><span class="btn-icon">➕</span> Add Event</button>
 				</div>
 				<div id="eventsEditor" class="event-editor-list"></div>
 			</section>
