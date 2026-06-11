@@ -26,6 +26,34 @@ public class ScheduleService {
 		return new ArrayList<>(blocks.values());
 	}
 
+	/**
+	 * Attempt to autofill the given day by copying existing blocks from other days into free slots
+	 * while avoiding group collisions. This is a best-effort, non-destructive operation: any
+	 * attempted copy that would cause a collision is skipped.
+	 *
+	 * @param day target day code (e.g. "MON")
+	 * @return list of newly created blocks added to the schedule
+	 */
+	public List<Block> autofillDay(String day) {
+		List<Block> snapshot = findAll();
+		List<Block> created = new ArrayList<>();
+
+		// Try to copy each block from other days into the target day.
+		for (Block src : snapshot) {
+			if (Objects.equals(src.day, day)) continue;
+			// Create a copy with the target day. id=null so create() assigns a new id.
+			Block attempt = new Block(null, day, src.periodStart, src.length, src.course, src.group, src.room);
+			try {
+				Block added = create(attempt);
+				created.add(added);
+			} catch (IllegalArgumentException ex) {
+				// Skip conflicts or invalid blocks silently (best-effort)
+			}
+		}
+
+		return created;
+	}
+
 	public Block create(Block request) {
 		validate(request);
 		String id = UUID.randomUUID().toString();

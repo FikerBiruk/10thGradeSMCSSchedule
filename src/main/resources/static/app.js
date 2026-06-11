@@ -71,7 +71,8 @@ async function setupAdminPage() {
 	wireModal();
 	wireLogout();
 	wireMobileSelector();
-	wireAddBlockForm();
+		wireAddBlockForm();
+		wireAutofill();
 
 	try {
 		await loadSchedule();
@@ -83,6 +84,31 @@ async function setupAdminPage() {
 		}
 		alert(error.message);
 	}
+}
+
+function wireAutofill() {
+	const btn = document.getElementById("autofillButton");
+ 	if (!btn) return;
+
+	btn.addEventListener("click", async () => {
+		try {
+			btn.disabled = true;
+			const day = state.mobileDay || "MON";
+			const response = await authorizedFetch(`/api/autofill?day=${encodeURIComponent(day)}`, { method: "POST" });
+			if (!response.ok) {
+				throw new Error(`Autofill failed (${response.status}).`);
+			}
+
+			const created = await response.json();
+			await loadSchedule();
+			alert(`Autofill complete. ${created.length} block(s) added for ${DAY_LABELS[day]}.`);
+		} catch (err) {
+			console.error(err);
+			alert(err.message || String(err));
+		} finally {
+			btn.disabled = false;
+		}
+	});
 }
 
 function wireModal() {

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -48,6 +49,16 @@ public class ApiController {
 		}
 
 		return ResponseEntity.ok(scheduleService.findAll());
+	}
+
+	@PostMapping("/autofill")
+	public ResponseEntity<?> autofillDay(@RequestHeader(value = "X-Session-Token", required = false) String token,
+			@RequestParam("day") String day) {
+		if (!authService.isValidToken(token)) {
+			return unauthorized();
+		}
+
+		return ResponseEntity.ok(scheduleService.autofillDay(day));
 	}
 
 	@PostMapping("/blocks")
