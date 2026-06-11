@@ -517,12 +517,20 @@ function initAdminPage() {
 	// Admin controls: undo & lock day
 	document.getElementById('undoButton')?.addEventListener('click', () => undo());
 	document.getElementById('lockDayButton')?.addEventListener('click', () => toggleLockDay());
-	const afBtn = document.getElementById('autofillButton');
-	if (afBtn) {
-		console.debug('autofill button found and listener attached');
-		afBtn.addEventListener('click', () => autofillCurrentDay());
+
+	const afDayBtn = document.getElementById('autofillDayButton');
+	const afWeekBtn = document.getElementById('autofillWeekButton');
+	if (afDayBtn) {
+		console.debug('autofill day button found and listener attached');
+		afDayBtn.addEventListener('click', () => autofillDay('day'));
 	} else {
-		console.debug('autofill button not present at initAdminPage');
+		console.debug('autofill day button not present at initAdminPage');
+	}
+	if (afWeekBtn) {
+		console.debug('autofill week button found and listener attached');
+		afWeekBtn.addEventListener('click', () => autofillDay('week'));
+	} else {
+		console.debug('autofill week button not present at initAdminPage');
 	}
 
 	const app = document.getElementById("adminApp");
@@ -742,63 +750,71 @@ function toggleLockDay() {
 	renderAdminPage();
 }
 
-function autofillCurrentDay() {
-	const btn = document.getElementById('autofillButton');
-	console.debug('autofillCurrentDay invoked, button element:', btn);
+function autofillDay(scope) {
+	// scope can be 'day' (current day only) or 'week' (all days in current week)
+	const btn = scope === 'day' ? document.getElementById('autofillDayButton') : document.getElementById('autofillWeekButton');
+	console.debug(`autofillDay invoked with scope=${scope}, button element:`, btn);
 	if (!btn) return;
+
 	const originalHtml = btn.innerHTML;
 	btn.disabled = true;
-	btn.innerHTML = `<span class="btn-icon">✨</span> Autofilling...`;
+	const label = scope === 'week' ? 'Filling week...' : 'Autofilling...';
+	btn.innerHTML = `<span class="btn-icon">✨</span> ${label}`;
 
 	// Use a short timeout to ensure the UI updates before the synchronous work runs
 	setTimeout(() => {
-		const day = state.currentDay;
 		const week = state.schedule.weeks[state.currentWeekIdx];
-		if (!week || !week[day]) {
+		if (!week) {
 			btn.disabled = false;
 			btn.innerHTML = originalHtml;
 			return;
 		}
 
-		// Get all blocks from other days to use as templates
 		const DAYS = ["MON", "TUE", "WED", "THU", "FRI"];
-		console.debug('autofill: currentDay=', day);
-		// quick snapshot of available courses per day for debugging
-		DAYS.forEach(d => console.debug(`autofill: day=${d} -> X: ${week[d].map(p=>p.x.course).join(', ')} | Y: ${week[d].map(p=>p.y.course).join(', ')}`));
+		const daysToFill = scope === 'week' ? DAYS : [state.currentDay];
 		let filledCount = 0;
 
-		for (const sourceDay of DAYS) {
-			if (sourceDay === day) continue;
-			if (!week[sourceDay]) continue;
+		for (const targetDay of daysToFill) {
+			if (!week[targetDay]) continue;
 
-			// Try to copy each block from the source day to the current day
-			week[sourceDay].forEach((sourcePeriod, idx) => {
-				// Try to fill x position (only when source has a real course)
-				if (sourcePeriod.x && sourcePeriod.x.course && sourcePeriod.x.course !== "None" && week[day][idx]) {
-					const targetX = week[day][idx].x;
-					if (!targetX || !targetX.course || targetX.course === "None" || targetX.course === "") {
-						console.debug(`autofill: filling ${day} period ${idx} x from ${sourceDay}`);
-						week[day][idx].x = JSON.parse(JSON.stringify(sourcePeriod.x));
-						filledCount++;
+			console.debug(`autofill: targeting day=${targetDay}`);
+			// quick snapshot of available courses per day for debugging
+			console.debug(`autofill: day=${targetDay} (before) -> X: ${week[targetDay].map(p=>p.x.course).join(', ')} | Y: ${week[targetDay].map(p=>p.y.course).join(', ')}`);
+
+			for (const sourceDay of DAYS) {
+				if (sourceDay === targetDay) continue;
+				if (!week[sourceDay]) continue;
+
+				// Try to copy each block from the source day to the target day
+				week[sourceDay].forEach((sourcePeriod, idx) => {
+					// Try to fill x position (only when source has a real course)
+					if (sourcePeriod.x && sourcePeriod.x.course && sourcePeriod.x.course !== "None" && week[targetDay][idx]) {
+						const targetX = week[targetDay][idx].x;
+						if (!targetX || !targetX.course || targetX.course === "None" || targetX.course === "") {
+							console.debug(`autofill: filling ${targetDay} period ${idx} x from ${sourceDay}`);
+							week[targetDay][idx].x = JSON.parse(JSON.stringify(sourcePeriod.x));
+							filledCount++;
+						}
 					}
-				}
-				// Try to fill y position (only when source has a real course)
-				if (sourcePeriod.y && sourcePeriod.y.course && sourcePeriod.y.course !== "None" && week[day][idx]) {
-					const targetY = week[day][idx].y;
-					if (!targetY || !targetY.course || targetY.course === "None" || targetY.course === "") {
-						console.debug(`autofill: filling ${day} period ${idx} y from ${sourceDay}`);
-						week[day][idx].y = JSON.parse(JSON.stringify(sourcePeriod.y));
-						filledCount++;
+					// Try to fill y position (only when source has a real course)
+					if (sourcePeriod.y && sourcePeriod.y.course && sourcePeriod.y.course !== "None" && week[targetDay][idx]) {
+						const targetY = week[targetDay][idx].y;
+						if (!targetY || !targetY.course || targetY.course === "None" || targetY.course === "") {
+							console.debug(`autofill: filling ${targetDay} period ${idx} y from ${sourceDay}`);
+							week[targetDay][idx].y = JSON.parse(JSON.stringify(sourcePeriod.y));
+							filledCount++;
+						}
 					}
-				}
-			});
+				});
+			}
 		}
 
 		saveSchedule(state.schedule);
 		renderAdminPage();
 		btn.disabled = false;
 		btn.innerHTML = originalHtml;
-		alert(`Autofill complete! ${filledCount} slot(s) filled.`);
+		const msg = scope === 'week' ? `Week autofill complete! ${filledCount} slot(s) filled.` : `Autofill complete! ${filledCount} slot(s) filled.`;
+		alert(msg);
 	}, 50);
 }
 
