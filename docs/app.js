@@ -241,6 +241,17 @@ function renderAdminPage() {
 	const dSelect = document.getElementById("adminDaySelect");
 	if (dSelect) dSelect.value = state.currentDay;
 
+	// Show/hide week-specific controls depending on admin view
+	const afWeekBtn = document.getElementById('autofillWeekButton');
+	const clearWeekBtn = document.getElementById('clearWeekButton');
+	if (state.adminView === 'week') {
+		if (afWeekBtn) afWeekBtn.classList.remove('hidden');
+		if (clearWeekBtn) clearWeekBtn.classList.remove('hidden');
+	} else {
+		if (afWeekBtn) afWeekBtn.classList.add('hidden');
+		if (clearWeekBtn) clearWeekBtn.classList.add('hidden');
+	}
+
 	const container = document.getElementById("adminSchedule");
 	if (state.adminView === 'day') {
 		container.innerHTML = renderTable(state.schedule.weeks[state.currentWeekIdx][state.currentDay], true);
@@ -531,6 +542,12 @@ function initAdminPage() {
 		afWeekBtn.addEventListener('click', () => autofillDay('week'));
 	} else {
 		console.debug('autofill week button not present at initAdminPage');
+	}
+
+	// Clear week button wiring
+	const clearWeekBtn = document.getElementById('clearWeekButton');
+	if (clearWeekBtn) {
+		clearWeekBtn.addEventListener('click', () => clearWeek());
 	}
 
 	const app = document.getElementById("adminApp");
@@ -842,6 +859,19 @@ function clearAllClasses() {
 		s.weeks[state.currentWeekIdx][state.currentDay].forEach(p => { p.x = { ...EMPTY_BLOCK }; p.y = { ...EMPTY_BLOCK }; });
 		saveSchedule(s);
 	}
+}
+
+function clearWeek() {
+	if (!confirm('Clear all classes for the entire week?')) return;
+	const s = state.schedule;
+	const week = s.weeks[state.currentWeekIdx];
+	const DAYS = ["MON","TUE","WED","THU","FRI"];
+	DAYS.forEach(day => {
+		if (!week[day]) return;
+		week[day].forEach(p => { p.x = { ...EMPTY_BLOCK }; p.y = { ...EMPTY_BLOCK }; });
+	});
+	saveSchedule(s);
+	renderAdminPage();
 }
 function exportSchedule() {
 	const blob = new Blob([JSON.stringify(state.schedule, null, 2)], { type: 'application/json' });
