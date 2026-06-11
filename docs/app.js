@@ -517,7 +517,13 @@ function initAdminPage() {
 	// Admin controls: undo & lock day
 	document.getElementById('undoButton')?.addEventListener('click', () => undo());
 	document.getElementById('lockDayButton')?.addEventListener('click', () => toggleLockDay());
-	document.getElementById('autofillButton')?.addEventListener('click', () => autofillCurrentDay());
+	const afBtn = document.getElementById('autofillButton');
+	if (afBtn) {
+		console.debug('autofill button found and listener attached');
+		afBtn.addEventListener('click', () => autofillCurrentDay());
+	} else {
+		console.debug('autofill button not present at initAdminPage');
+	}
 
 	const app = document.getElementById("adminApp");
 	app.addEventListener("change", handleAdminInput);
@@ -737,42 +743,58 @@ function toggleLockDay() {
 }
 
 function autofillCurrentDay() {
-	const day = state.currentDay;
-	const week = state.schedule.weeks[state.currentWeekIdx];
-	if (!week || !week[day]) return;
+	const btn = document.getElementById('autofillButton');
+	console.debug('autofillCurrentDay invoked, button element:', btn);
+	if (!btn) return;
+	const originalHtml = btn.innerHTML;
+	btn.disabled = true;
+	btn.innerHTML = `<span class="btn-icon">✨</span> Autofilling...`;
 
-	// Get all blocks from other days to use as templates
-	const DAYS = ["MON", "TUE", "WED", "THU", "FRI"];
-	let filledCount = 0;
+	// Use a short timeout to ensure the UI updates before the synchronous work runs
+	setTimeout(() => {
+		const day = state.currentDay;
+		const week = state.schedule.weeks[state.currentWeekIdx];
+		if (!week || !week[day]) {
+			btn.disabled = false;
+			btn.innerHTML = originalHtml;
+			return;
+		}
 
-	for (const sourceDay of DAYS) {
-		if (sourceDay === day) continue;
-		if (!week[sourceDay]) continue;
+		// Get all blocks from other days to use as templates
+		const DAYS = ["MON", "TUE", "WED", "THU", "FRI"];
+		let filledCount = 0;
 
-		// Try to copy each block from the source day to the current day
-		week[sourceDay].forEach((sourcePeriod, idx) => {
-			// Try to fill x position
-			if (sourcePeriod.x && sourcePeriod.x.course && week[day][idx]) {
-				const targetX = week[day][idx].x;
-				if (!targetX || !targetX.course) {
-					week[day][idx].x = JSON.parse(JSON.stringify(sourcePeriod.x));
-					filledCount++;
+		for (const sourceDay of DAYS) {
+			if (sourceDay === day) continue;
+			if (!week[sourceDay]) continue;
+
+			// Try to copy each block from the source day to the current day
+			week[sourceDay].forEach((sourcePeriod, idx) => {
+				// Try to fill x position
+				if (sourcePeriod.x && sourcePeriod.x.course && week[day][idx]) {
+					const targetX = week[day][idx].x;
+					if (!targetX || !targetX.course || targetX.course === "None") {
+						week[day][idx].x = JSON.parse(JSON.stringify(sourcePeriod.x));
+						filledCount++;
+					}
 				}
-			}
-			// Try to fill y position
-			if (sourcePeriod.y && sourcePeriod.y.course && week[day][idx]) {
-				const targetY = week[day][idx].y;
-				if (!targetY || !targetY.course) {
-					week[day][idx].y = JSON.parse(JSON.stringify(sourcePeriod.y));
-					filledCount++;
+				// Try to fill y position
+				if (sourcePeriod.y && sourcePeriod.y.course && week[day][idx]) {
+					const targetY = week[day][idx].y;
+					if (!targetY || !targetY.course || targetY.course === "None") {
+						week[day][idx].y = JSON.parse(JSON.stringify(sourcePeriod.y));
+						filledCount++;
+					}
 				}
-			}
-		});
-	}
+			});
+		}
 
-	saveSchedule(state.schedule);
-	renderAdminPage();
-	alert(`Autofill complete! ${filledCount} slot(s) filled.`);
+		saveSchedule(state.schedule);
+		renderAdminPage();
+		btn.disabled = false;
+		btn.innerHTML = originalHtml;
+		alert(`Autofill complete! ${filledCount} slot(s) filled.`);
+	}, 50);
 }
 
 function updateLockUI() {
