@@ -762,6 +762,9 @@ function autofillCurrentDay() {
 
 		// Get all blocks from other days to use as templates
 		const DAYS = ["MON", "TUE", "WED", "THU", "FRI"];
+		console.debug('autofill: currentDay=', day);
+		// quick snapshot of available courses per day for debugging
+		DAYS.forEach(d => console.debug(`autofill: day=${d} -> X: ${week[d].map(p=>p.x.course).join(', ')} | Y: ${week[d].map(p=>p.y.course).join(', ')}`));
 		let filledCount = 0;
 
 		for (const sourceDay of DAYS) {
@@ -770,18 +773,20 @@ function autofillCurrentDay() {
 
 			// Try to copy each block from the source day to the current day
 			week[sourceDay].forEach((sourcePeriod, idx) => {
-				// Try to fill x position
-				if (sourcePeriod.x && sourcePeriod.x.course && week[day][idx]) {
+				// Try to fill x position (only when source has a real course)
+				if (sourcePeriod.x && sourcePeriod.x.course && sourcePeriod.x.course !== "None" && week[day][idx]) {
 					const targetX = week[day][idx].x;
-					if (!targetX || !targetX.course || targetX.course === "None") {
+					if (!targetX || !targetX.course || targetX.course === "None" || targetX.course === "") {
+						console.debug(`autofill: filling ${day} period ${idx} x from ${sourceDay}`);
 						week[day][idx].x = JSON.parse(JSON.stringify(sourcePeriod.x));
 						filledCount++;
 					}
 				}
-				// Try to fill y position
-				if (sourcePeriod.y && sourcePeriod.y.course && week[day][idx]) {
+				// Try to fill y position (only when source has a real course)
+				if (sourcePeriod.y && sourcePeriod.y.course && sourcePeriod.y.course !== "None" && week[day][idx]) {
 					const targetY = week[day][idx].y;
-					if (!targetY || !targetY.course || targetY.course === "None") {
+					if (!targetY || !targetY.course || targetY.course === "None" || targetY.course === "") {
+						console.debug(`autofill: filling ${day} period ${idx} y from ${sourceDay}`);
 						week[day][idx].y = JSON.parse(JSON.stringify(sourcePeriod.y));
 						filledCount++;
 					}
