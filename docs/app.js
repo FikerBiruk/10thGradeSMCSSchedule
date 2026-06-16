@@ -1199,8 +1199,8 @@ function openPresetModal() {
 		});
 	};
 
+	renderMiniCards(); // Render cards before grid setup
 	renderMiniGrid();
-	renderMiniCards();
 
 	modal.querySelector('#savePresetBtn').addEventListener('click', () => {
 		const name = modal.querySelector('#presetNameInput').value.trim();
