@@ -795,7 +795,16 @@ function renderLiveTimer() {
 	const day = now.getDay();
 	const time = now.getHours() * 60 + now.getMinutes();
 	if (day === 0 || day === 6) return `<div class="live-status-card weekend">Weekend Mode</div>`;
-	const sch = [{ p: 1, s: 480, e: 570 }, { p: 2, s: 585, e: 675 }, { p: 3, s: 735, e: 825 }, { p: 4, s: 840, e: 930 }];
+	const sch = [
+		{ p: 1, s: 465, e: 515 },
+		{ p: 2, s: 520, e: 565 },
+		{ p: 3, s: 570, e: 615 },
+		{ p: 4, s: 620, e: 665 },
+		{ p: 5, s: 725, e: 770 },
+		{ p: 6, s: 775, e: 820 },
+		{ p: 7, s: 825, e: 870 },
+		{ p: 8, s: 877, e: 925 }
+	];
 	const curr = sch.find(s => time >= s.s && time <= s.e);
 	const next = sch.find(s => s.s > time);
 	if (curr) return `<div class="live-status-card active">Period ${curr.p} ends in ${curr.e - time}m</div>`;
