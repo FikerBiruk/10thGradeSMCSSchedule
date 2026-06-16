@@ -983,7 +983,6 @@ function toggleLockDay() {
 
 function autofillDay(scope) {
 	const btn = scope === 'day' ? document.getElementById('autofillDayButton') : document.getElementById('autofillWeekButton');
-	console.debug(`autofillDay invoked with scope=${scope}, button element:`, btn);
 	if (!btn) return;
 
 	const originalHtml = btn.innerHTML;
@@ -999,46 +998,42 @@ function autofillDay(scope) {
 			return;
 		}
 
-		const DAYS = ["MON", "TUE", "WED", "THU", "FRI"];
 		const daysToFill = scope === 'week' ? DAYS : [state.currentDay];
-		let filledCount = 0;
+		let totalFilled = 0;
 
 		for (const targetDay of daysToFill) {
-			if (!week[targetDay]) continue;
+			const periods = week[targetDay];
+			if (!periods) continue;
 
-			console.debug(`autofill: targeting day=${targetDay}`);
-			console.debug(`autofill: day=${targetDay} (before) -> X: ${week[targetDay].map(p=>p.x.course).join(', ')} | Y: ${week[targetDay].map(p=>p.y.course).join(', ')}`);
+			// 1. Fill gaps in Block X using missing core courses
+			const presentInX = periods.map(p => p.x.course).filter(c => c && c !== "None");
+			const uniqueInX = new Set(presentInX);
+			const missingFromX = COURSES.filter(c => !uniqueInX.has(c));
 
-			for (const sourceDay of DAYS) {
-				if (sourceDay === targetDay) continue;
-				if (!week[sourceDay]) continue;
+			periods.forEach(p => {
+				if ((!p.x.course || p.x.course === "None") && missingFromX.length > 0) {
+					const course = missingFromX.shift();
+					const lib = COURSE_LIBRARY[course] || { teacher: "", room: "" };
+					p.x = { ...EMPTY_BLOCK, course, teacher: lib.teacher, room: lib.room };
+					totalFilled++;
+				}
+			});
 
-				week[sourceDay].forEach((sourcePeriod, idx) => {
-					if (sourcePeriod.x && sourcePeriod.x.course && sourcePeriod.x.course !== "None" && week[targetDay][idx]) {
-						const targetX = week[targetDay][idx].x;
-						if (!targetX || !targetX.course || targetX.course === "None" || targetX.course === "") {
-							console.debug(`autofill: filling ${targetDay} period ${idx} x from ${sourceDay}`);
-							week[targetDay][idx].x = JSON.parse(JSON.stringify(sourcePeriod.x));
-							filledCount++;
-						}
-					}
-					if (sourcePeriod.y && sourcePeriod.y.course && sourcePeriod.y.course !== "None" && week[targetDay][idx]) {
-						const targetY = week[targetDay][idx].y;
-						if (!targetY || !targetY.course || targetY.course === "None" || targetY.course === "") {
-							console.debug(`autofill: filling ${targetDay} period ${idx} y from ${sourceDay}`);
-							week[targetDay][idx].y = JSON.parse(JSON.stringify(sourcePeriod.y));
-							filledCount++;
-						}
-					}
-				});
-			}
+			// 2. Mirror Block X to Block Y in reverse chronological order
+			const xSnapshot = periods.map(p => JSON.parse(JSON.stringify(p.x)));
+			periods.forEach((p, idx) => {
+				if (!p.y.locked) {
+					const source = xSnapshot[3 - idx];
+					p.y = JSON.parse(JSON.stringify(source));
+				}
+			});
 		}
 
 		saveSchedule(state.schedule);
 		renderAdminPage();
 		btn.disabled = false;
 		btn.innerHTML = originalHtml;
-		const msg = scope === 'week' ? `Week autofill complete! ${filledCount} slot(s) filled.` : `Autofill complete! ${filledCount} slot(s) filled.`;
+		const msg = scope === 'week' ? `Week autofill complete!` : `Autofill complete!`;
 		alert(msg);
 	}, 50);
 }
