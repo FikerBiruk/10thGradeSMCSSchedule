@@ -1005,7 +1005,7 @@ function autofillDay(scope) {
 			const periods = week[targetDay];
 			if (!periods) continue;
 
-			// 1. Fill gaps in Block X using missing core courses
+			// 1. Fill gaps in Block X (Ensure uniqueness)
 			const presentInX = periods.map(p => p.x.course).filter(c => c && c !== "None");
 			const missingFromX = COURSES.filter(c => !presentInX.includes(c));
 
@@ -1017,17 +1017,38 @@ function autofillDay(scope) {
 				}
 			});
 
-			// 2. Mirror Block X to Block Y (Reverse Order)
-			// We respect locks, but overwrite non-locked blocks to maintain the rotation
-			const xSnapshot = periods.map(p => JSON.parse(JSON.stringify(p.x)));
+			// 2. Smart Mirror to Block Y (Ensuring uniqueness and respecting locks)
+			const xCourses = periods.map(p => p.x.course);
+			const yPresent = periods.map(p => p.y.course).filter(c => c && c !== "None");
+			const yMissing = COURSES.filter(c => !yPresent.includes(c));
+
 			periods.forEach((p, idx) => {
-				if (!p.y.locked) {
-					p.y = JSON.parse(JSON.stringify(xSnapshot[3 - idx]));
+				if (p.y.locked) return; // Keep locked blocks
+
+				const preferredCourse = xCourses[3 - idx];
+
+				// If the mirrored course is already in Y (due to a lock), pick from missing courses
+				if (yPresent.includes(preferredCourse) || preferredCourse === "None") {
+					if (yMissing.length > 0) {
+						const course = yMissing.shift();
+						const lib = COURSE_LIBRARY[course];
+						p.y = { ...EMPTY_BLOCK, course, teacher: lib.teacher, room: lib.room };
+						yPresent.push(course);
+					} else {
+						p.y = { ...EMPTY_BLOCK };
+					}
+				} else {
+					// Use the preferred mirrored course
+					const lib = COURSE_LIBRARY[preferredCourse];
+					p.y = { ...EMPTY_BLOCK, course: preferredCourse, teacher: lib.teacher, room: lib.room };
+					yPresent.push(preferredCourse);
+					// Remove from missing if it was there
+					const mIdx = yMissing.indexOf(preferredCourse);
+					if (mIdx > -1) yMissing.splice(mIdx, 1);
 				}
 			});
 
-			// 3. Conflict Resolution (The "No-Red" Pass)
-			// If any period has a sibling conflict (same teacher/room), swap Y blocks to fix it
+			// 3. Conflict Resolution (Same Teacher/Room in same period)
 			const checkConflict = (b1, b2) => {
 				if (b1.course === "None" || b2.course === "None") return false;
 				return (b1.teacher && b1.teacher === b2.teacher) || (b1.room && b1.room === b2.room);
@@ -1035,11 +1056,8 @@ function autofillDay(scope) {
 
 			for (let i = 0; i < 4; i++) {
 				if (checkConflict(periods[i].x, periods[i].y)) {
-					// Try to find a non-locked period in Y to swap with to resolve conflict
 					for (let j = 0; j < 4; j++) {
 						if (i === j || periods[j].y.locked) continue;
-
-						// Test if swapping Y[i] and Y[j] resolves the conflict at i AND doesn't create one at j
 						if (!checkConflict(periods[i].x, periods[j].y) && !checkConflict(periods[j].x, periods[i].y)) {
 							const temp = periods[i].y;
 							periods[i].y = periods[j].y;
