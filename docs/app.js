@@ -106,11 +106,13 @@ document.addEventListener("DOMContentLoaded", () => {
 		state.schedule = ensureScheduleShape(data);
 		state.lockedDays = data?.lockedDays || {};
 		if (page === "admin") renderAdminPage();
+		if (page === "public") renderPublicPage();
 	});
 
 	db.ref('settings').on('value', snap => {
 		state.settings = snap.val() || {};
 		if (page === 'admin') renderAdminPage();
+		if (page === 'public') renderPublicPage();
 	});
 
 	db.ref('requests').on('value', snap => {
@@ -339,7 +341,13 @@ function renderTable(periods, isAdmin) {
 
 function renderPublicBlock(b) {
 	if (b.course === "None") return "";
-	return `<div class="table-block"><div class="course-name">${escapeHtml(b.course)}</div><div class="teacher-name">${escapeHtml(b.teacher)}</div><div class="room-number">Room ${escapeHtml(b.room)}</div>${Number(b.length) === 2 ? '<div class="double-badge">Double</div>' : ''}</div>`;
+	const isDouble = Number(b.length) === 2;
+	return `<div class="table-block ${isDouble ? 'is-double' : ''}">
+		<div class="course-name">${escapeHtml(b.course)}</div>
+		<div class="teacher-name">${escapeHtml(b.teacher)}</div>
+		<div class="room-number">Room ${escapeHtml(b.room)}</div>
+		${isDouble ? '<div class="double-indicator">Double Period</div>' : ''}
+	</div>`;
 }
 
 function renderAdminPage() {

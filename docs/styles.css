@@ -642,6 +642,27 @@ a { color: inherit; text-decoration: none; }
 	border-color: rgba(var(--grad-1), 0.25);
 }
 
+.table-block.is-double {
+	background: rgba(var(--grad-2), 0.12);
+	border-color: var(--y);
+	box-shadow: 0 12px 30px rgba(var(--grad-2), 0.15);
+}
+
+.double-indicator {
+	margin-top: 12px;
+	padding: 8px 14px;
+	background: var(--y);
+	color: #fff;
+	border-radius: 10px;
+	font-size: 0.75rem;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	display: inline-flex;
+	align-items: center;
+	align-self: flex-start;
+}
+
 .table-block .course-name {
 	font-weight: 800;
 	font-size: 1.08rem;
