@@ -1007,26 +1007,46 @@ function autofillDay(scope) {
 
 			// 1. Fill gaps in Block X using missing core courses
 			const presentInX = periods.map(p => p.x.course).filter(c => c && c !== "None");
-			const uniqueInX = new Set(presentInX);
-			const missingFromX = COURSES.filter(c => !uniqueInX.has(c));
+			const missingFromX = COURSES.filter(c => !presentInX.includes(c));
 
 			periods.forEach(p => {
 				if ((!p.x.course || p.x.course === "None") && missingFromX.length > 0) {
 					const course = missingFromX.shift();
 					const lib = COURSE_LIBRARY[course] || { teacher: "", room: "" };
 					p.x = { ...EMPTY_BLOCK, course, teacher: lib.teacher, room: lib.room };
-					totalFilled++;
 				}
 			});
 
-			// 2. Mirror Block X to Block Y in reverse chronological order
-			const xSnapshot = periods.map(p => JSON.parse(JSON.stringify(p.x)));
+			// 2. Detect Mode: Mirror vs Independent
+			// If Block Y already contains classes that don't match a reverse mirror of X, switch to Independent
+			let independentMode = false;
 			periods.forEach((p, idx) => {
-				if (!p.y.locked) {
-					const source = xSnapshot[3 - idx];
-					p.y = JSON.parse(JSON.stringify(source));
+				const mirrorCourse = periods[3 - idx].x.course;
+				if (p.y.course !== "None" && p.y.course !== mirrorCourse) {
+					independentMode = true;
 				}
 			});
+
+			if (independentMode) {
+				// Independent Mode: Fill Y gaps using missing core courses for Y
+				const presentInY = periods.map(p => p.y.course).filter(c => c && c !== "None");
+				const missingFromY = COURSES.filter(c => !presentInY.includes(c));
+				periods.forEach(p => {
+					if ((!p.y.course || p.y.course === "None") && missingFromY.length > 0) {
+						const course = missingFromY.shift();
+						const lib = COURSE_LIBRARY[course] || { teacher: "", room: "" };
+						p.y = { ...EMPTY_BLOCK, course, teacher: lib.teacher, room: lib.room };
+					}
+				});
+			} else {
+				// Mirror Mode: Reverse Block X into Block Y
+				const xSnapshot = periods.map(p => JSON.parse(JSON.stringify(p.x)));
+				periods.forEach((p, idx) => {
+					if (!p.y.locked) {
+						p.y = JSON.parse(JSON.stringify(xSnapshot[3 - idx]));
+					}
+				});
+			}
 		}
 
 		saveSchedule(state.schedule);
