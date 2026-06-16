@@ -79,7 +79,7 @@ const state = {
 	schedule: DEFAULT_SCHEDULE,
 	darkMode: true,
 	selectedCourse: null,
-	publicView: 'week',
+	publicView: 'day',
 	adminView: 'day',
 	currentWeekIdx: 0,
 	currentDay: "MON",
@@ -496,7 +496,7 @@ function renderAdminBlock(block, key, idx) {
 		<div class="block-info"><div class="course-name">${escapeHtml(block.course)}</div><div class="teacher-name">${escapeHtml(block.teacher)}</div></div>
 		<div class="block-controls"><input type="text" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}" autocomplete="off" ${locked ? 'disabled' : ''}>
 		<div class="block-actions"><button class="toggle-double-btn ${isDouble ? 'active' : ''}" data-action="toggle-double" data-period-index="${idx}" data-block-key="${key}" ${locked ? 'disabled' : ''}>Double</button></div></div>
-		${isDouble ? '<div class="double-badge">Double</div>' : ''}`}
+		`}
 	</div>`;
 }
 
