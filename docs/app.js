@@ -342,10 +342,11 @@ function renderTable(periods, isAdmin) {
 function renderPublicBlock(b) {
 	if (b.course === "None") return "";
 	const isDouble = Number(b.length) === 2;
+	const isDefaultRoom = COURSE_LIBRARY[b.course]?.room === b.room;
 	return `<div class="table-block ${isDouble ? 'is-double' : ''}">
 		<div class="course-name">${escapeHtml(b.course)}</div>
 		<div class="teacher-name">${escapeHtml(b.teacher)}</div>
-		<div class="room-number">Room ${escapeHtml(b.room)}</div>
+		<div class="room-number ${!isDefaultRoom ? 'custom-room' : ''}">Room ${escapeHtml(b.room)}</div>
 		${isDouble ? '<div class="double-indicator">Double Period</div>' : ''}
 	</div>`;
 }
@@ -498,11 +499,12 @@ function renderAdminBlock(block, key, idx) {
 			if (block.room && sibling.room && sibling.room === block.room) conflict = true;
 		});
 	}
+	const isDefaultRoom = !empty && COURSE_LIBRARY[block.course]?.room === block.room;
 	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''} ${locked ? 'is-locked' : ''} ${conflict ? 'has-conflict' : ''} ${empty ? 'is-empty' : ''}" draggable="${!empty && !locked}" data-period-index="${idx}" data-block-key="${key}">
 		${empty ? '<div class="empty-placeholder">Empty</div>' : `
 		${renderLockButton(block, idx, key, state.currentDay)}
 		<div class="block-info"><div class="course-name">${escapeHtml(block.course)}</div><div class="teacher-name">${escapeHtml(block.teacher)}</div></div>
-		<div class="block-controls"><input type="text" class="room-input" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}" autocomplete="off" ${locked ? 'disabled' : ''}>
+		<div class="block-controls"><input type="text" class="room-input ${!isDefaultRoom ? 'custom-room' : ''}" data-room-edit value="${escapeAttribute(block.room)}" data-period-index="${idx}" data-block-key="${key}" autocomplete="off" ${locked ? 'disabled' : ''}>
 		<div class="block-actions"><button class="toggle-double-btn ${isDouble ? 'active' : ''}" data-action="toggle-double" data-period-index="${idx}" data-block-key="${key}" ${locked ? 'disabled' : ''}>Double</button></div></div>
 		`}
 	</div>`;

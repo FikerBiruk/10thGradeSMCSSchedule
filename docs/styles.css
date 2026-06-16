@@ -592,6 +592,13 @@ a { color: inherit; text-decoration: none; }
 	border-color: var(--accent);
 }
 
+.room-input.custom-room {
+	border-color: var(--accent);
+	color: var(--accent);
+	background: rgba(var(--grad-1), 0.04);
+	font-weight: 800;
+}
+
 .block-actions {
 	display: flex;
 	gap: 8px;
@@ -717,6 +724,14 @@ a { color: inherit; text-decoration: none; }
 	color: var(--muted);
 	align-self: flex-start;
 	margin-top: 8px;
+	transition: all 0.2s;
+}
+
+.room-number.custom-room {
+	background: rgba(var(--grad-1), 0.15);
+	border-color: var(--accent);
+	color: var(--accent);
+	box-shadow: 0 0 12px rgba(var(--grad-1), 0.1);
 }
 
 /* Button Styles */
