@@ -26,10 +26,11 @@ if (!db) {
 		ref() {
 			return {
 				on(_event, cb) {
-					if (typeof cb === 'function') cb({ val: () => null });
+					if (typeof cb === 'function') cb({ val: () => null, key: null });
 					return () => {};
 				},
 				set(_value) { return Promise.resolve(); },
+				push(value) { return { set: () => Promise.resolve(value) }; },
 			};
 		},
 	};
@@ -82,6 +83,9 @@ const state = {
 	adminView: 'day',
 	currentWeekIdx: 0,
 	currentDay: "MON",
+	settings: {},
+	requests: {},
+	presets: {},
 	// per-day locks to prevent accidental edits
 	lockedDays: {},
 	// simple undo stack (stores recent schedule snapshots)
@@ -90,10 +94,12 @@ const state = {
 	dragContext: null,
 };
 
+let page = document.body.dataset.page;
+
 document.addEventListener("DOMContentLoaded", () => {
-	const page = document.body.dataset.page;
+	page = document.body.dataset.page;
 	loadDarkModePreference();
-					if (page === "public") renderPublicPage();
+	if (page === "public") renderPublicPage();
 
 	db.ref('schedule').on('value', (snapshot) => {
 		const data = snapshot.val();
@@ -102,8 +108,44 @@ document.addEventListener("DOMContentLoaded", () => {
 		if (page === "admin") renderAdminPage();
 	});
 
+	db.ref('settings').on('value', snap => {
+		state.settings = snap.val() || {};
+		if (page === 'admin') renderAdminPage();
+	});
+
+	db.ref('requests').on('value', snap => {
+		state.requests = snap.val() || {};
+		if (page === 'requests') renderRequestsPage();
+		if (page === 'admin') renderAdminPage();
+	});
+
+	db.ref('requests').on('child_changed', snap => {
+		const req = snap.val();
+		const id = snap.key;
+
+		if (!req || req.status !== "PENDING") return;
+
+		const votes = req.votes || {};
+		const voteValues = Object.values(votes);
+
+		if (voteValues.includes("rejected")) {
+			db.ref(`requests/${id}/status`).set("REJECTED");
+			return;
+		}
+
+		if (voteValues.length && voteValues.every(v => v === "approved")) {
+			db.ref("schedule").set(req.proposed);
+			db.ref(`requests/${id}/status`).set("APPROVED");
+		}
+	});
+
+	db.ref('presets').on('value', snap => {
+		state.presets = snap.val() || {};
+		if (page === 'admin') renderAdminPage();
+	});
+
 	if (page === "public") initPublicPage();
-	if (page === "admin") initAdminPage();
+	if (page === "admin" || page === 'requests') initAdminPage();
 });
 
 function saveSchedule(s) {
@@ -115,6 +157,77 @@ function saveSchedule(s) {
 		lockedDays: state.lockedDays || {}
 	});
 	return n;
+}
+
+function isPastDeadline() {
+	const d = state.settings?.deadline;
+	if (!d) return false;
+	return Date.now() > new Date(d).getTime();
+}
+
+function submitChangeRequest() {
+	const user = getLoggedInUser();
+	if (!user) {
+		alert("You must be logged in as a teacher to submit a request.");
+		return;
+	}
+
+	const requesterKey = Object.keys(TEACHERS).find(k => TEACHERS[k].name === user.name) || user.username || user.id;
+	const original = JSON.parse(JSON.stringify(state.schedule));
+	const proposed = JSON.parse(JSON.stringify(state.schedule));
+	const affectedTeachers = Object.keys(TEACHERS);
+	const votes = {};
+	affectedTeachers.forEach(t => {
+		votes[t] = t === requesterKey ? "approved" : "pending";
+	});
+
+	const req = {
+		requester: requesterKey,
+		requesterName: user.name,
+		day: state.currentDay,
+		original,
+		proposed,
+		affectedTeachers,
+		votes,
+		status: "PENDING",
+		timestamp: Date.now()
+	};
+
+	db.ref("requests").push(req);
+	alert("Request submitted for approval.");
+}
+
+function voteOnRequest(id, vote) {
+	const user = getLoggedInUser();
+	if (!user) {
+		alert("You must be logged in to vote.");
+		return;
+	}
+
+	const usernameKey = Object.keys(TEACHERS).find(k => TEACHERS[k].name === user.name);
+	if (!usernameKey) {
+		alert("Unknown teacher identity.");
+		return;
+	}
+
+	db.ref(`requests/${id}/votes/${usernameKey}`).set(vote);
+}
+
+function viewRequest(id) {
+	const req = state.requests[id];
+	if (!req) return;
+
+	alert(
+		"Original:\n" +
+		JSON.stringify(req.original, null, 2) +
+		"\n\nProposed:\n" +
+		JSON.stringify(req.proposed, null, 2)
+	);
+}
+
+function goToRequests() {
+	page = "requests";
+	renderRequestsPage();
 }
 
 function applyAutoMerge(schedule) {
@@ -217,8 +330,8 @@ function renderTable(periods, isAdmin) {
 		const skipX = prev && Number(prev.x.length) === 2;
 		const skipY = prev && Number(prev.y.length) === 2;
 		html += `<tr><td class="period-col"><span class="period-label">P${p.period}</span></td>
-			${skipX ? '' : `<td class="block-col block-x" data-period-index="${idx}" data-block="x" ${Number(p.x.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.x, 'x', idx) : renderPublicBlock(p.x)}</td>`}
-			${skipY ? '' : `<td class="block-col block-y" data-period-index="${idx}" data-block="y" ${Number(p.y.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.y, 'y', idx) : renderPublicBlock(p.y)}</td>`}
+			${skipX ? '' : `<td class="block-col block-x" data-period-index="idx" data-block="x" ${Number(p.x.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.x, 'x', idx) : renderPublicBlock(p.x)}</td>`}
+			${skipY ? '' : `<td class="block-col block-y" data-period-index="idx" data-block="y" ${Number(p.y.length) === 2 ? 'rowspan="2"' : ''}>${isAdmin ? renderAdminBlock(p.y, 'y', idx) : renderPublicBlock(p.y)}</td>`}
 		</tr>`;
 	});
 	return html + `</tbody></table>`;
@@ -241,7 +354,39 @@ function renderAdminPage() {
 	const dSelect = document.getElementById("adminDaySelect");
 	if (dSelect) dSelect.value = state.currentDay;
 
-	// Show/hide week-specific controls depending on admin view
+	// Preset dropdown injection
+	const navGroup = document.querySelector(".admin-nav-group");
+	if (navGroup) {
+		let presetWrap = document.getElementById("presetSelectorWrap");
+		if (!presetWrap) {
+			navGroup.insertAdjacentHTML('beforeend', `
+				<div id="presetSelectorWrap" style="margin-left: 8px;">
+					<select id="presetSelector" class="secondary-btn">
+						<option value="">Presets ▼</option>
+						<option value="ADD">+ Add Preset</option>
+					</select>
+				</div>
+			`);
+			document.getElementById("presetSelector").addEventListener("change", (e) => {
+				if (e.target.value === "ADD") openPresetModal();
+				else if (e.target.value) applyPreset(e.target.value);
+				e.target.value = "";
+			});
+		}
+		const pSelect = document.getElementById("presetSelector");
+		if (pSelect) {
+			while (pSelect.options.length > 2) pSelect.remove(2);
+			Object.entries(state.presets || {}).forEach(([id, p]) => {
+				if (p.day === state.currentDay) {
+					const opt = document.createElement("option");
+					opt.value = id;
+					opt.textContent = p.name;
+					pSelect.appendChild(opt);
+				}
+			});
+		}
+	}
+
 	const afWeekBtn = document.getElementById('autofillWeekButton');
 	const clearWeekBtn = document.getElementById('clearWeekButton');
 	if (state.adminView === 'week') {
@@ -253,20 +398,30 @@ function renderAdminPage() {
 	}
 
 	const container = document.getElementById("adminSchedule");
-	if (state.adminView === 'day') {
-		container.innerHTML = renderTable(state.schedule.weeks[state.currentWeekIdx][state.currentDay], true);
-	} else {
-		container.innerHTML = renderAdminWeekGrid();
+	if (container) {
+		const deadlinePast = isPastDeadline();
+		let header = '';
+		if (page === 'requests') {
+			renderRequestsPage();
+			return;
+		}
+		if (deadlinePast) {
+			header = `<div class="deadline-banner"><strong>Deadline passed.</strong> Direct saves are disabled. Use Submit Request.</div>`;
+		}
+		if (state.adminView === 'day') {
+			container.innerHTML = header + renderTable(state.schedule.weeks[state.currentWeekIdx][state.currentDay], true);
+		} else {
+			container.innerHTML = header + renderAdminWeekGrid();
+		}
 	}
 
 	document.getElementById("adminClassCards").innerHTML = renderClassCards();
 	document.getElementById("eventsEditor").innerHTML = renderEventsEditor(state.schedule);
 	updateSaveStatus();
 	setupDragAndDrop();
-	// update undo button enabled/disabled state
 	const undoBtn = document.getElementById('undoButton'); if (undoBtn) undoBtn.disabled = state.undoStack.length === 0;
-	// update lock UI
 	updateLockUI();
+	updateAdminActionButtons();
 }
 
 function renderAdminWeekGrid() {
@@ -308,13 +463,11 @@ function renderAdminBlock(block, key, idx) {
 	const periods = state.schedule.weeks[state.currentWeekIdx][state.currentDay];
 	let conflict = false;
 	if (!empty) {
-		// Existing course duplication heuristic (non-adjacent duplicate)
 		periods.forEach((p, pIdx) => {
 			if (pIdx !== idx && p[key].course === block.course) {
 				if (Math.abs(pIdx - idx) > 1 || (Number(block.length) !== 2 && Number(p[key].length) !== 2)) conflict = true;
 			}
 		});
-		// Teacher/room conflicts: same day, same time slot, opposite group(s)
 		const otherKey = key === 'x' ? 'y' : 'x';
 		const slotIndexes = [idx];
 		if (isDouble && idx + 1 < periods.length) slotIndexes.push(idx + 1);
@@ -377,7 +530,6 @@ function setupDragAndDrop() {
 		const raw = e.dataTransfer.getData('text/plain');
 		if (!raw) return;
 		if (state.dragContext) state.dragContext.handled = true;
-		// prevent changes on locked days
 		if (state.lockedDays && state.lockedDays[d]) { alert('This day is locked. Unlock to make changes.'); return; }
 		handleSelection(idx, key, raw, e, zone, d);
 	};
@@ -423,7 +575,6 @@ function handleSelection(tIdx, key, raw, event, zone, day) {
 	const week = state.schedule.weeks[state.currentWeekIdx];
 	const currentBlock = week[day][tIdx][key];
 
-	// prevent edits if the day is locked
 	if (state.lockedDays && state.lockedDays[day]) { alert('This day is locked. Unlock to make changes.'); return; }
 	if (currentBlock.locked) { alert('This class is locked. Unlock it first.'); return; }
 
@@ -433,7 +584,6 @@ function handleSelection(tIdx, key, raw, event, zone, day) {
 	}
 
 	if (raw.startsWith('lib:')) {
-		// placing from library - behaves like copy
 		const course = raw.replace('lib:', '');
 		const block = week[day][tIdx][key];
 		pushUndo();
@@ -454,7 +604,6 @@ function handleSelection(tIdx, key, raw, event, zone, day) {
 		if (sBlock.locked) { alert('This class is locked. Unlock it first.'); return; }
 		if (tBlock.locked) { alert('This class is locked. Unlock it first.'); return; }
 
-		// Ctrl key => copy source to target (leave source intact)
 		if (event && event.ctrlKey) {
 			pushUndo();
 			tBlock.course = temp.course; tBlock.teacher = temp.teacher; tBlock.room = temp.room; tBlock.length = temp.length || 1;
@@ -463,20 +612,16 @@ function handleSelection(tIdx, key, raw, event, zone, day) {
 			return;
 		}
 
-		// Shift key => insert/shift mode: shift target and following down by one
 		if (event && event.shiftKey) {
 			pushUndo();
-			// shift down within target day for the same key
 			for (let i = 3; i > tIdx; i--) {
 				week[day][i][key] = JSON.parse(JSON.stringify(week[day][i-1][key]));
 			}
-			// place source into target
 			week[day][tIdx][key] = temp;
 			saveSchedule(state.schedule);
 			return;
 		}
 
-		// Default behavior: swap source and target
 		pushUndo();
 		sBlock.course = tBlock.course; sBlock.teacher = tBlock.teacher; sBlock.room = tBlock.room; sBlock.length = 1;
 		delete sBlock.forceSingle;
@@ -518,6 +663,7 @@ function initAdminPage() {
 	document.getElementById("adminApp").hidden = false;
 
 	const daysEnum = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
 	const today = daysEnum[new Date().getDay()];
 	if (DAYS.includes(today)) state.currentDay = today;
 
@@ -525,7 +671,7 @@ function initAdminPage() {
 	document.getElementById("adminWeekViewBtn")?.addEventListener("click", () => { state.adminView = 'week'; renderAdminPage(); });
 	document.getElementById("adminDaySelect")?.addEventListener("change", e => { state.currentDay = e.target.value; renderAdminPage(); });
 	document.getElementById("logoutButton")?.addEventListener("click", handleLogout);
-	// Admin controls: undo & lock day
+	document.getElementById("requestsButton")?.addEventListener("click", goToRequests);
 	document.getElementById('undoButton')?.addEventListener('click', () => undo());
 	document.getElementById('lockDayButton')?.addEventListener('click', () => toggleLockDay());
 
@@ -544,11 +690,13 @@ function initAdminPage() {
 		console.debug('autofill week button not present at initAdminPage');
 	}
 
-	// Clear week button wiring
 	const clearWeekBtn = document.getElementById('clearWeekButton');
 	if (clearWeekBtn) {
 		clearWeekBtn.addEventListener('click', () => clearWeek());
 	}
+
+	const submitBtn = document.getElementById('submitRequestButton');
+	if (submitBtn) submitBtn.addEventListener('click', submitChangeRequest);
 
 	const app = document.getElementById("adminApp");
 	app.addEventListener("change", handleAdminInput);
@@ -661,6 +809,54 @@ function renderEventsEditor(s) {
 	}).join('')}</div>`;
 }
 
+function renderRequestsPage() {
+	const user = getLoggedInUser();
+	const usernameKey = Object.keys(TEACHERS).find(k => TEACHERS[k].name === user?.name);
+	const container = document.getElementById("adminSchedule");
+	if (!container) return;
+
+	const requests = state.requests || {};
+	const entries = Object.entries(requests);
+
+	let html = `<div class="admin-page-header"><h2>Pending Requests</h2><button type="button" class="secondary-btn" onclick="goToAdminEditor()">Back to Editor</button></div>`;
+
+	if (!entries.length) {
+		html += `<p>No requests yet.</p>`;
+	} else {
+		html += `<ul class="request-list">`;
+		entries.sort((a, b) => (b[1]?.timestamp || 0) - (a[1]?.timestamp || 0)).forEach(([id, req]) => {
+			const votes = req.votes || {};
+			const myVote = usernameKey ? votes[usernameKey] : null;
+
+			html += `
+				<li class="request-item">
+					<div><strong>Requester:</strong> ${escapeHtml(req.requesterName || req.requester || 'Unknown')}</div>
+					<div><strong>Day:</strong> ${escapeHtml(req.day || 'N/A')}</div>
+					<div><strong>Status:</strong> ${escapeHtml(req.status || 'PENDING')}</div>
+					<div><strong>Your vote:</strong> ${escapeHtml(myVote || "N/A")}</div>
+					<button type="button" onclick="viewRequest('${id}')">View details</button>
+			`;
+
+			if (req.status === "PENDING" && myVote === "pending") {
+				html += `
+					<button type="button" onclick="voteOnRequest('${id}', 'approved')">Approve</button>
+					<button type="button" onclick="voteOnRequest('${id}', 'rejected')">Reject</button>
+				`;
+			}
+
+			html += `</li>`;
+		});
+		html += `</ul>`;
+	}
+
+	container.innerHTML = html;
+}
+
+function goToAdminEditor() {
+	page = 'admin';
+	renderAdminPage();
+}
+
 function ensureScheduleShape(s) {
 	if (!s) return JSON.parse(JSON.stringify(DEFAULT_SCHEDULE));
 	const n = { weeks: s.weeks || [createEmptyWeek()], events: Array.isArray(s.events) ? s.events : [] };
@@ -733,7 +929,6 @@ function pushUndo() {
 		const snapshot = JSON.parse(JSON.stringify(state.schedule));
 		state.undoStack = state.undoStack || [];
 		state.undoStack.push(snapshot);
-		// keep stack bounded
 		if (state.undoStack.length > 20) state.undoStack.shift();
 	} catch (e) { /* ignore */ }
 }
@@ -754,7 +949,6 @@ function toggleLockDay() {
 	const newState = !state.lockedDays[day];
 	state.lockedDays[day] = newState;
 
-	// Explicitly force all blocks for this day into the new lock state
 	const week = state.schedule.weeks[state.currentWeekIdx];
 	if (week && week[day]) {
 		week[day].forEach(p => {
@@ -768,7 +962,6 @@ function toggleLockDay() {
 }
 
 function autofillDay(scope) {
-	// scope can be 'day' (current day only) or 'week' (all days in current week)
 	const btn = scope === 'day' ? document.getElementById('autofillDayButton') : document.getElementById('autofillWeekButton');
 	console.debug(`autofillDay invoked with scope=${scope}, button element:`, btn);
 	if (!btn) return;
@@ -778,7 +971,6 @@ function autofillDay(scope) {
 	const label = scope === 'week' ? 'Filling week...' : 'Autofilling...';
 	btn.innerHTML = `<span class="btn-icon">✨</span> ${label}`;
 
-	// Use a short timeout to ensure the UI updates before the synchronous work runs
 	setTimeout(() => {
 		const week = state.schedule.weeks[state.currentWeekIdx];
 		if (!week) {
@@ -795,16 +987,13 @@ function autofillDay(scope) {
 			if (!week[targetDay]) continue;
 
 			console.debug(`autofill: targeting day=${targetDay}`);
-			// quick snapshot of available courses per day for debugging
 			console.debug(`autofill: day=${targetDay} (before) -> X: ${week[targetDay].map(p=>p.x.course).join(', ')} | Y: ${week[targetDay].map(p=>p.y.course).join(', ')}`);
 
 			for (const sourceDay of DAYS) {
 				if (sourceDay === targetDay) continue;
 				if (!week[sourceDay]) continue;
 
-				// Try to copy each block from the source day to the target day
 				week[sourceDay].forEach((sourcePeriod, idx) => {
-					// Try to fill x position (only when source has a real course)
 					if (sourcePeriod.x && sourcePeriod.x.course && sourcePeriod.x.course !== "None" && week[targetDay][idx]) {
 						const targetX = week[targetDay][idx].x;
 						if (!targetX || !targetX.course || targetX.course === "None" || targetX.course === "") {
@@ -813,7 +1002,6 @@ function autofillDay(scope) {
 							filledCount++;
 						}
 					}
-					// Try to fill y position (only when source has a real course)
 					if (sourcePeriod.y && sourcePeriod.y.course && sourcePeriod.y.course !== "None" && week[targetDay][idx]) {
 						const targetY = week[targetDay][idx].y;
 						if (!targetY || !targetY.course || targetY.course === "None" || targetY.course === "") {
@@ -845,7 +1033,15 @@ function updateLockUI() {
 
 function updateSaveStatus() {
 	const s = document.getElementById('saveStatus');
-	if (s) s.textContent = 'Synced';
+	if (s) s.textContent = isPastDeadline() ? 'Request mode' : 'Synced';
+}
+
+function updateAdminActionButtons() {
+	const saveBtn = document.getElementById('saveButton');
+	const submitBtn = document.getElementById('submitRequestButton');
+	const deadlinePast = isPastDeadline();
+	if (saveBtn) saveBtn.classList.toggle('hidden', deadlinePast);
+	if (submitBtn) submitBtn.classList.toggle('hidden', !deadlinePast);
 }
 
 function isAuthenticated() { return localStorage.getItem(AUTH_KEY) === 'ok'; }
@@ -881,5 +1077,163 @@ function exportSchedule() {
 }
 function addEventRow() { state.schedule.events.push({ period: 'all', title: '', note: '', description: '' }); saveSchedule(state.schedule); }
 function deleteEventRow(i) { state.schedule.events.splice(i, 1); saveSchedule(state.schedule); }
-function escapeHtml(s) { return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m])); }
+function escapeHtml(s) { return String(s).replace(/[&<>"]'/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m])); }
 function escapeAttribute(s) { return escapeHtml(s).replace(/`/g, '&#96;'); }
+
+window.voteOnRequest = voteOnRequest;
+window.viewRequest = viewRequest;
+window.goToRequests = goToRequests;
+window.goToAdminEditor = goToAdminEditor;
+window.submitChangeRequest = submitChangeRequest;
+
+/** PRESET SYSTEM FUNCTIONS **/
+
+function openPresetModal() {
+	const miniGrid = [1, 2, 3, 4].map(p => ({
+		period: p,
+		x: { ...EMPTY_BLOCK },
+		y: { ...EMPTY_BLOCK }
+	}));
+
+	const modal = document.createElement('div');
+	modal.id = 'presetModal';
+	Object.assign(modal.style, {
+		position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+		background: 'rgba(0,0,0,0.8)', zIndex: '10000', display: 'flex',
+		alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)',
+		padding: '20px'
+	});
+
+	modal.innerHTML = `
+		<div class="surface" style="width: min(1000px, 100%); max-height: 90vh; border-radius: var(--radius-xl); padding: 32px; overflow-y: auto;">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+				<div>
+					<p class="eyebrow">Templates</p>
+					<h2>Create ${state.currentDay} Preset</h2>
+				</div>
+				<button class="ghost-btn" onclick="closePresetModal()">✕</button>
+			</div>
+
+			<div class="field" style="margin-bottom: 24px;">
+				<span>Preset Name</span>
+				<input type="text" id="presetNameInput" placeholder="Standard Schedule..." style="width: 100%;">
+			</div>
+
+			<div class="admin-grid-2">
+				<div id="miniScheduleContainer"></div>
+				<aside>
+					<p class="eyebrow">Library</p>
+					<div id="miniClassCards" class="class-cards-panel"></div>
+				</aside>
+			</div>
+
+			<div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px;">
+				<button class="ghost-btn" onclick="closePresetModal()">Cancel</button>
+				<button class="primary-btn" id="savePresetBtn">Save Preset</button>
+			</div>
+		</div>
+	`;
+
+	document.body.appendChild(modal);
+
+	const renderMiniGrid = () => {
+		const container = modal.querySelector('#miniScheduleContainer');
+		container.innerHTML = `
+			<table class="schedule-table admin-table">
+				<thead><tr><th>Period</th><th>Block X</th><th>Block Y</th></tr></thead>
+				<tbody>
+					${miniGrid.map((p, idx) => `
+						<tr>
+							<td class="period-col"><span class="period-label">P${p.period}</span></td>
+							<td class="block-col block-x" data-idx="${idx}" data-key="x">${renderMiniBlock(p.x)}</td>
+							<td class="block-col block-y" data-idx="${idx}" data-key="y">${renderMiniBlock(p.y)}</td>
+						</tr>
+					`).join('')}
+				</tbody>
+			</table>
+		`;
+		setupMiniDragAndDrop();
+	};
+
+	const renderMiniBlock = (b) => {
+		if (b.course === "None") return '<div class="empty-placeholder">Empty</div>';
+		return `
+			<div class="admin-block-cell">
+				<div class="block-info">
+					<div class="course-name">${escapeHtml(b.course)}</div>
+					<div class="teacher-name">${escapeHtml(b.teacher)}</div>
+				</div>
+			</div>
+		`;
+	};
+
+	const renderMiniCards = () => {
+		const container = modal.querySelector('#miniClassCards');
+		container.innerHTML = COURSES.map(c => `
+			<div class="class-card draggable-mini-card" draggable="true" data-course="${c}">
+				<div class="card-title">${c}</div>
+				<div class="card-teacher">${COURSE_LIBRARY[c].teacher}</div>
+			</div>
+		`).join('');
+	};
+
+	const setupMiniDragAndDrop = () => {
+		modal.querySelectorAll('.draggable-mini-card').forEach(c => {
+			c.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', c.dataset.course));
+		});
+		modal.querySelectorAll('.block-col').forEach(z => {
+			z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('drag-over'); });
+			z.addEventListener('dragleave', () => z.classList.remove('drag-over'));
+			z.addEventListener('drop', e => {
+				e.preventDefault();
+				z.classList.remove('drag-over');
+				const course = e.dataTransfer.getData('text/plain');
+				if (course && COURSE_LIBRARY[course]) {
+					const idx = z.dataset.idx;
+					const key = z.dataset.key;
+					const lib = COURSE_LIBRARY[course];
+					miniGrid[idx][key] = { ...EMPTY_BLOCK, course, teacher: lib.teacher, room: lib.room };
+					renderMiniGrid();
+				}
+			});
+		});
+	};
+
+	renderMiniGrid();
+	renderMiniCards();
+
+	modal.querySelector('#savePresetBtn').addEventListener('click', () => {
+		const name = modal.querySelector('#presetNameInput').value.trim();
+		if (!name) return alert('Please enter a preset name');
+		savePreset(name, miniGrid);
+	});
+}
+
+function closePresetModal() {
+	document.getElementById('presetModal')?.remove();
+}
+
+function savePreset(name, blocks) {
+	db.ref("presets").push({
+		name,
+		day: state.currentDay,
+		blocks: blocks
+	}).then(() => {
+		closePresetModal();
+	});
+}
+
+function applyPreset(id) {
+	const preset = state.presets[id];
+	if (!preset) return;
+	if (!confirm(`Apply preset "${preset.name}"? This will overwrite the current schedule for ${state.currentDay}.`)) return;
+
+	pushUndo();
+	state.schedule.weeks[0][state.currentDay] = JSON.parse(JSON.stringify(preset.blocks));
+	saveSchedule(state.schedule);
+	renderAdminPage();
+}
+
+window.openPresetModal = openPresetModal;
+window.closePresetModal = closePresetModal;
+window.applyPreset = applyPreset;

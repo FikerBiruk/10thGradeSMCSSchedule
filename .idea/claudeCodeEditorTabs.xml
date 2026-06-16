@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ClaudeCodeEditorTabs">
+    <option name="activeSessionId" value="afcb2736-bc19-4a48-b1f5-8423c056245e" />
+    <option name="openSessionIds">
+      <list>
+        <option value="036a4916-8f73-4c0d-93e6-f7a16c7dd872" />
+        <option value="93cf119c-5e8f-4a80-bff3-590feaea2132" />
+        <option value="afcb2736-bc19-4a48-b1f5-8423c056245e" />
+      </list>
+    </option>
+    <option name="sessionPaths">
+      <map>
+        <entry key="036a4916-8f73-4c0d-93e6-f7a16c7dd872" value="/switch-account" />
+        <entry key="93cf119c-5e8f-4a80-bff3-590feaea2132" value="/switch-account" />
+        <entry key="afcb2736-bc19-4a48-b1f5-8423c056245e" value="/switch-account" />
+      </map>
+    </option>
+    <option name="sessionTitles">
+      <map>
+        <entry key="036a4916-8f73-4c0d-93e6-f7a16c7dd872" value="localhost:53548/switch-account?workingDir=C%3A%2FUsers%2Ffiker%2FStudioProjects%2F10thGradeSMCSSchedule" />
+        <entry key="93cf119c-5e8f-4a80-bff3-590feaea2132" value="localhost:53548/switch-account?workingDir=C%3A%2FUsers%2Ffiker%2FStudioProjects%2F10thGradeSMCSSchedule" />
+        <entry key="afcb2736-bc19-4a48-b1f5-8423c056245e" value="Claude Code" />
+      </map>
+    </option>
+  </component>
+</project>
