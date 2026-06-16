@@ -1012,40 +1012,42 @@ function autofillDay(scope) {
 			periods.forEach(p => {
 				if ((!p.x.course || p.x.course === "None") && missingFromX.length > 0) {
 					const course = missingFromX.shift();
-					const lib = COURSE_LIBRARY[course] || { teacher: "", room: "" };
+					const lib = COURSE_LIBRARY[course];
 					p.x = { ...EMPTY_BLOCK, course, teacher: lib.teacher, room: lib.room };
 				}
 			});
 
-			// 2. Detect Mode: Mirror vs Independent
-			// If Block Y already contains classes that don't match a reverse mirror of X, switch to Independent
-			let independentMode = false;
+			// 2. Mirror Block X to Block Y (Reverse Order)
+			// We respect locks, but overwrite non-locked blocks to maintain the rotation
+			const xSnapshot = periods.map(p => JSON.parse(JSON.stringify(p.x)));
 			periods.forEach((p, idx) => {
-				const mirrorCourse = periods[3 - idx].x.course;
-				if (p.y.course !== "None" && p.y.course !== mirrorCourse) {
-					independentMode = true;
+				if (!p.y.locked) {
+					p.y = JSON.parse(JSON.stringify(xSnapshot[3 - idx]));
 				}
 			});
 
-			if (independentMode) {
-				// Independent Mode: Fill Y gaps using missing core courses for Y
-				const presentInY = periods.map(p => p.y.course).filter(c => c && c !== "None");
-				const missingFromY = COURSES.filter(c => !presentInY.includes(c));
-				periods.forEach(p => {
-					if ((!p.y.course || p.y.course === "None") && missingFromY.length > 0) {
-						const course = missingFromY.shift();
-						const lib = COURSE_LIBRARY[course] || { teacher: "", room: "" };
-						p.y = { ...EMPTY_BLOCK, course, teacher: lib.teacher, room: lib.room };
+			// 3. Conflict Resolution (The "No-Red" Pass)
+			// If any period has a sibling conflict (same teacher/room), swap Y blocks to fix it
+			const checkConflict = (b1, b2) => {
+				if (b1.course === "None" || b2.course === "None") return false;
+				return (b1.teacher && b1.teacher === b2.teacher) || (b1.room && b1.room === b2.room);
+			};
+
+			for (let i = 0; i < 4; i++) {
+				if (checkConflict(periods[i].x, periods[i].y)) {
+					// Try to find a non-locked period in Y to swap with to resolve conflict
+					for (let j = 0; j < 4; j++) {
+						if (i === j || periods[j].y.locked) continue;
+
+						// Test if swapping Y[i] and Y[j] resolves the conflict at i AND doesn't create one at j
+						if (!checkConflict(periods[i].x, periods[j].y) && !checkConflict(periods[j].x, periods[i].y)) {
+							const temp = periods[i].y;
+							periods[i].y = periods[j].y;
+							periods[j].y = temp;
+							break;
+						}
 					}
-				});
-			} else {
-				// Mirror Mode: Reverse Block X into Block Y
-				const xSnapshot = periods.map(p => JSON.parse(JSON.stringify(p.x)));
-				periods.forEach((p, idx) => {
-					if (!p.y.locked) {
-						p.y = JSON.parse(JSON.stringify(xSnapshot[3 - idx]));
-					}
-				});
+				}
 			}
 		}
 
