@@ -149,7 +149,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 	db.ref('library').on('value', snap => {
 		if (snap.exists()) {
-			COURSE_LIBRARY = snap.val();
+			COURSE_LIBRARY = { ...COURSE_LIBRARY, ...snap.val() };
 			if (page === 'admin') renderAdminPage();
 		}
 	});
@@ -530,7 +530,8 @@ function renderAdminBlock(block, key, idx) {
 			if (block.room && sibling.room && sibling.room === block.room) conflict = true;
 		});
 	}
-	const isDefaultRoom = !empty && COURSE_LIBRARY[block.course]?.room === block.room;
+	const libData = COURSE_LIBRARY[block.course] || { room: "" };
+	const isDefaultRoom = !empty && libData.room === block.room;
 	return `<div class="admin-block-cell ${isDouble ? 'is-double' : ''} ${locked ? 'is-locked' : ''} ${conflict ? 'has-conflict' : ''} ${empty ? 'is-empty' : ''}" draggable="${!empty && !locked}" data-period-index="${idx}" data-block-key="${key}">
 		${empty ? '<div class="empty-placeholder">Empty</div>' : `
 		${renderLockButton(block, idx, key, state.currentDay)}
@@ -542,7 +543,10 @@ function renderAdminBlock(block, key, idx) {
 }
 
 function renderClassCards() {
-	return COURSES.map(c => `<div class="class-card draggable-card" draggable="true" data-course="${c}"><button class="edit-lib-btn" onclick="openEditLibraryModal('${c}', event)" title="Edit course defaults">✎</button><div class="card-title">${c}</div><div class="card-teacher">${COURSE_LIBRARY[c].teacher}</div><div class="card-room">Room ${COURSE_LIBRARY[c].room}</div></div>`).join('');
+	return COURSES.map(c => {
+		const lib = COURSE_LIBRARY[c] || { teacher: "TBD", room: "???" };
+		return `<div class="class-card draggable-card" draggable="true" data-course="${c}"><button class="edit-lib-btn" onclick="openEditLibraryModal('${c}', event)" title="Edit course defaults">✎</button><div class="card-title">${c}</div><div class="card-teacher">${escapeHtml(lib.teacher)}</div><div class="card-room">Room ${escapeHtml(lib.room)}</div></div>`;
+	}).join('');
 }
 
 function renderLockButton(block, idx, key, day) {
@@ -562,6 +566,10 @@ function setupDragAndDrop() {
 	const weekZones = document.querySelectorAll('.admin-cell');
 
 	cards.forEach(c => c.addEventListener('dragstart', e => {
+		if (e.target.closest('button')) {
+			e.preventDefault();
+			return;
+		}
 		state.dragContext = { sourceType: 'library', handled: false };
 		e.dataTransfer.setData('text/plain', 'lib:' + c.dataset.course);
 	}));
@@ -1054,7 +1062,7 @@ function autofillDay(scope) {
 			periods.forEach(p => {
 				if ((!p.x.course || p.x.course === "None") && missingFromX.length > 0) {
 					const course = missingFromX.shift();
-					const lib = COURSE_LIBRARY[course];
+					const lib = COURSE_LIBRARY[course] || { teacher: "TBD", room: "???" };
 					p.x = { ...EMPTY_BLOCK, course, teacher: lib.teacher, room: lib.room };
 				}
 			});
@@ -1073,7 +1081,7 @@ function autofillDay(scope) {
 				if (yPresent.includes(preferredCourse) || preferredCourse === "None") {
 					if (yMissing.length > 0) {
 						const course = yMissing.shift();
-						const lib = COURSE_LIBRARY[course];
+						const lib = COURSE_LIBRARY[course] || { teacher: "TBD", room: "???" };
 						p.y = { ...EMPTY_BLOCK, course, teacher: lib.teacher, room: lib.room };
 						yPresent.push(course);
 					} else {
@@ -1081,7 +1089,7 @@ function autofillDay(scope) {
 					}
 				} else {
 					// Use the preferred mirrored course
-					const lib = COURSE_LIBRARY[preferredCourse];
+					const lib = COURSE_LIBRARY[preferredCourse] || { teacher: "TBD", room: "???" };
 					p.y = { ...EMPTY_BLOCK, course: preferredCourse, teacher: lib.teacher, room: lib.room };
 					yPresent.push(preferredCourse);
 					// Remove from missing if it was there
