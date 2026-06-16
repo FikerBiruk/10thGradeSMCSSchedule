@@ -49,7 +49,7 @@ const TEACHERS = {
 const COURSES = ["Bio", "CS", "ESS", "FOT"];
 const DAYS = ["MON", "TUE", "WED", "THU", "FRI"];
 
-const COURSE_LIBRARY = {
+let COURSE_LIBRARY = {
 	Bio: { teacher: "Mr. Yu", room: "2614" },
 	CS: { teacher: "Ms. Hallisey", room: "1702" },
 	ESS: { teacher: "Mr. Kingman", room: "1708" },
@@ -145,6 +145,13 @@ document.addEventListener("DOMContentLoaded", () => {
 	db.ref('presets').on('value', snap => {
 		state.presets = snap.val() || {};
 		if (page === 'admin') renderAdminPage();
+	});
+
+	db.ref('library').on('value', snap => {
+		if (snap.exists()) {
+			COURSE_LIBRARY = snap.val();
+			if (page === 'admin') renderAdminPage();
+		}
 	});
 
 	if (page === "public") initPublicPage();
@@ -535,7 +542,7 @@ function renderAdminBlock(block, key, idx) {
 }
 
 function renderClassCards() {
-	return COURSES.map(c => `<div class="class-card draggable-card" draggable="true" data-course="${c}"><div class="card-title">${c}</div><div class="card-teacher">${COURSE_LIBRARY[c].teacher}</div><div class="card-room">Room ${COURSE_LIBRARY[c].room}</div></div>`).join('');
+	return COURSES.map(c => `<div class="class-card draggable-card" draggable="true" data-course="${c}"><button class="edit-lib-btn" onclick="openEditLibraryModal('${c}', event)" title="Edit course defaults">✎</button><div class="card-title">${c}</div><div class="card-teacher">${COURSE_LIBRARY[c].teacher}</div><div class="card-room">Room ${COURSE_LIBRARY[c].room}</div></div>`).join('');
 }
 
 function renderLockButton(block, idx, key, day) {
@@ -1336,3 +1343,60 @@ window.openPresetModal = openPresetModal;
 window.closePresetModal = closePresetModal;
 window.applyPreset = applyPreset;
 window.deletePreset = deletePreset;
+
+/** LIBRARY EDITING FUNCTIONS **/
+
+function openEditLibraryModal(course, e) {
+	if (e) e.stopPropagation();
+	const data = COURSE_LIBRARY[course];
+	if (!data) return;
+
+	const modal = document.createElement('div');
+	modal.id = 'libEditModal';
+	Object.assign(modal.style, {
+		position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+		background: 'rgba(0,0,0,0.8)', zIndex: '11000', display: 'flex',
+		alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)'
+	});
+
+	modal.innerHTML = `
+		<div class="surface" style="width: 400px; border-radius: var(--radius-xl); padding: 32px;">
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+				<div>
+					<p class="eyebrow">Library</p>
+					<h2>Edit ${course} Defaults</h2>
+				</div>
+				<button class="ghost-btn" onclick="document.getElementById('libEditModal').remove()">✕</button>
+			</div>
+
+			<div class="field" style="margin-bottom: 16px;">
+				<span>Teacher Name</span>
+				<input type="text" id="libTeacherInput" value="${escapeAttribute(data.teacher)}">
+			</div>
+
+			<div class="field" style="margin-bottom: 24px;">
+				<span>Default Room</span>
+				<input type="text" id="libRoomInput" value="${escapeAttribute(data.room)}">
+			</div>
+
+			<div style="display: flex; justify-content: flex-end; gap: 12px;">
+				<button class="ghost-btn" onclick="document.getElementById('libEditModal').remove()">Cancel</button>
+				<button class="primary-btn" id="saveLibBtn">Save Changes</button>
+			</div>
+		</div>
+	`;
+
+	document.body.appendChild(modal);
+
+	modal.querySelector('#saveLibBtn').addEventListener('click', () => {
+		const teacher = document.getElementById('libTeacherInput').value.trim();
+		const room = document.getElementById('libRoomInput').value.trim();
+		if (!teacher || !room) return alert('Both fields are required');
+
+		db.ref(`library/${course}`).set({ teacher, room }).then(() => {
+			modal.remove();
+		});
+	});
+}
+
+window.openEditLibraryModal = openEditLibraryModal;
