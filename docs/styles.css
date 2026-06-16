@@ -374,6 +374,54 @@ a { color: inherit; text-decoration: none; }
 }
 .settings-link { color: var(--accent) !important; }
 
+.admin-nav-group {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.preset-menu-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.preset-menu-item:hover {
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.preset-load-btn {
+	flex: 1;
+	padding: 14px 20px;
+	border: none;
+	background: transparent;
+	color: var(--text);
+	text-align: left;
+	cursor: pointer;
+	font-weight: 700;
+	font-size: 0.9rem;
+}
+
+.preset-delete-btn {
+	opacity: 0;
+	background: transparent;
+	border: none;
+	color: var(--danger);
+	padding: 0 20px;
+	cursor: pointer;
+	font-weight: 800;
+	transition: opacity 0.2s, transform 0.2s;
+	font-size: 1.1rem;
+}
+
+.preset-menu-item:hover .preset-delete-btn {
+	opacity: 1;
+}
+
+.preset-delete-btn:hover {
+	transform: scale(1.2);
+}
+
 /* Toggles & Nav */
 .view-toggle {
 	display: flex; background: var(--surface-2); padding: 4px;

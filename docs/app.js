@@ -360,30 +360,42 @@ function renderAdminPage() {
 		let presetWrap = document.getElementById("presetSelectorWrap");
 		if (!presetWrap) {
 			navGroup.insertAdjacentHTML('beforeend', `
-				<div id="presetSelectorWrap" style="margin-left: 8px;">
-					<select id="presetSelector" class="secondary-btn">
-						<option value="">Presets ▼</option>
-						<option value="ADD">+ Add Preset</option>
-					</select>
+				<div id="presetSelectorWrap" class="settings-wrapper">
+					<button id="presetMenuBtn" class="secondary-btn" type="button">Presets ▼</button>
+					<div id="presetMenu" class="settings-menu hidden">
+						<button class="settings-item" type="button" onclick="openPresetModal()">+ Add Preset</button>
+						<div class="settings-divider"></div>
+						<div id="presetItemsList"></div>
+					</div>
 				</div>
 			`);
-			document.getElementById("presetSelector").addEventListener("change", (e) => {
-				if (e.target.value === "ADD") openPresetModal();
-				else if (e.target.value) applyPreset(e.target.value);
-				e.target.value = "";
+			const btn = document.getElementById('presetMenuBtn');
+			const menu = document.getElementById('presetMenu');
+			btn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				menu.classList.toggle('hidden');
+			});
+			document.addEventListener('click', e => {
+				if (menu && !menu.contains(e.target) && !btn.contains(e.target)) menu.classList.add('hidden');
 			});
 		}
-		const pSelect = document.getElementById("presetSelector");
-		if (pSelect) {
-			while (pSelect.options.length > 2) pSelect.remove(2);
-			Object.entries(state.presets || {}).forEach(([id, p]) => {
-				if (p.day === state.currentDay) {
-					const opt = document.createElement("option");
-					opt.value = id;
-					opt.textContent = p.name;
-					pSelect.appendChild(opt);
-				}
-			});
+		const list = document.getElementById("presetItemsList");
+		if (list) {
+			list.innerHTML = "";
+			const currentPresets = Object.entries(state.presets || {}).filter(([_, p]) => p.day === state.currentDay);
+			if (currentPresets.length === 0) {
+				list.innerHTML = '<div class="settings-item" style="opacity: 0.5; cursor: default;">No presets for this day</div>';
+			} else {
+				currentPresets.forEach(([id, p]) => {
+					const item = document.createElement("div");
+					item.className = "preset-menu-item";
+					item.innerHTML = `
+						<button class="preset-load-btn" type="button" onclick="applyPreset('${id}')">${escapeHtml(p.name)}</button>
+						<button class="preset-delete-btn" type="button" onclick="deletePreset('${id}', event)" title="Delete Preset">✕</button>
+					`;
+					list.appendChild(item);
+				});
+			}
 		}
 	}
 
@@ -1234,6 +1246,15 @@ function applyPreset(id) {
 	renderAdminPage();
 }
 
+function deletePreset(id, e) {
+	if (e) e.stopPropagation();
+	const name = state.presets[id]?.name || "this preset";
+	if (confirm(`Are you sure you want to delete "${name}"?`)) {
+		db.ref(`presets/${id}`).remove();
+	}
+}
+
 window.openPresetModal = openPresetModal;
 window.closePresetModal = closePresetModal;
 window.applyPreset = applyPreset;
+window.deletePreset = deletePreset;
