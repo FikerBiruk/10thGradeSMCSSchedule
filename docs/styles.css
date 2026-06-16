@@ -70,8 +70,10 @@ body.red-mode {
 * { box-sizing: border-box; }
 [hidden], .hidden { display: none !important; }
 
-html, body {
-	margin: 0; min-height: 100%; font-family: 'Manrope', system-ui, sans-serif;
+html { height: 100%; }
+
+body {
+	margin: 0; min-height: 100vh; font-family: 'Manrope', system-ui, sans-serif;
 	background: radial-gradient(circle at 15% 15%, rgba(var(--grad-1), 0.1), transparent 30%),
 	            radial-gradient(circle at 85% 0%, rgba(var(--grad-2), 0.1), transparent 30%),
 	            linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
