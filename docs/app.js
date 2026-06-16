@@ -80,6 +80,7 @@ const state = {
 	darkMode: true,
 	selectedCourse: null,
 	publicView: 'day',
+	publicBlock: 'x',
 	adminView: 'day',
 	currentWeekIdx: 0,
 	currentDay: "MON",
@@ -262,6 +263,13 @@ function applyAutoMerge(schedule) {
 function initPublicPage() {
 	document.getElementById("weekViewBtn")?.addEventListener("click", () => { state.publicView = 'week'; renderPublicPage(); });
 	document.getElementById("dayViewBtn")?.addEventListener("click", () => { state.publicView = 'day'; renderPublicPage(); });
+
+	// Delegate listener for the block switcher that gets injected
+	document.addEventListener('click', e => {
+		if (e.target.closest('#blockXBtn')) { state.publicBlock = 'x'; renderPublicPage(); }
+		if (e.target.closest('#blockYBtn')) { state.publicBlock = 'y'; renderPublicPage(); }
+	});
+
 	setupSettingsMenu();
 	renderPublicPage();
 }
@@ -273,6 +281,19 @@ function renderPublicPage() {
 	document.getElementById("dayViewBtn")?.classList.toggle("active", state.publicView === 'day');
 
 	let html = renderLiveTimer();
+
+	// Inject Block Switcher for Week View
+	if (state.publicView === 'week') {
+		html += `
+			<div class="block-switcher-container" style="margin-bottom: 24px;">
+				<div class="view-toggle">
+					<button id="blockXBtn" class="toggle-btn ${state.publicBlock === 'x' ? 'active' : ''}">Block X</button>
+					<button id="blockYBtn" class="toggle-btn ${state.publicBlock === 'y' ? 'active' : ''}">Block Y</button>
+				</div>
+			</div>
+		`;
+	}
+
 	if (state.publicView === 'day') {
 		const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 		let today = days[new Date().getDay()];
@@ -322,7 +343,10 @@ function renderFullWeekView() {
 		}
 		return h + `</div></div>`;
 	};
-	return `<div class="multi-week-container">${renderGroup('x', 'Block X')}${renderGroup('y', 'Block Y')}</div>`;
+
+	const key = state.publicBlock || 'x';
+	const label = key === 'x' ? 'Block X' : 'Block Y';
+	return `<div class="multi-week-container">${renderGroup(key, label)}</div>`;
 }
 
 function renderTable(periods, isAdmin) {
