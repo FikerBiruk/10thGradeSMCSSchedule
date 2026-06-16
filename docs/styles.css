@@ -131,6 +131,7 @@ a { color: inherit; text-decoration: none; }
 	border-radius: var(--radius-xl); padding: 28px;
 	position: relative;
 	overflow: visible !important;
+	z-index: 20;
 }
 
 /* Auth Card */
